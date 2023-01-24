@@ -16,7 +16,7 @@ df = pd.read_excel(excel_file, sheet_name=0, header=1)
 #get rid of the top line of garbage
 df = df[1:]
 #filter out everyhing but angle and flat bar
-df = df[(df['PART DESCRIPTION']=='Angle') | (df['PART DESCRIPTION']=='Flat Bar')]
+df = df[df['PART DESCRIPTION'].str.contains("Angle*|Flat*", na=False, case=False)]
 #sort by column MATERIAL DESCRIPTION
 df = df.sort_values('MATERIAL DESCRIPTION')
 #make a new column at the end called sum, default value is -1 so if a row get skipped it's obvious
