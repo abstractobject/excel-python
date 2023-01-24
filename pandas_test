@@ -1,0 +1,40 @@
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog
+
+#required before we can ask for input file
+root = tk.Tk()
+root.withdraw()
+
+#asks for input file
+excel_file = filedialog.askopenfilename()
+
+##Multi 21 sheet
+
+#read the excel file's first sheet, set line 1 (2nd line) as header for column names
+df = pd.read_excel(excel_file, sheet_name=0, header=1)
+#get rid of the top line of garbage
+df = df[1:]
+#filter out everyhing but angle and flat bar
+df = df[(df['PART DESCRIPTION']=='Angle') | (df['PART DESCRIPTION']=='Flat Bar')]
+#sort by column MATERIAL DESCRIPTION
+df = df.sort_values('MATERIAL DESCRIPTION')
+#make a new column at the end called sum, default value is -1 so if a row get skipped it's obvious
+df.insert(len(df.columns), 'SUM', -1)
+#column sum = (total qty) x (length in inches)
+df['SUM'] = df.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+
+#save to new excel file
+df.to_excel("Multi21.xlsx")
+
+#df = df.drop(index=df.index[0])
+#df = df.drop(index=df.index[0])
+
+
+
+##df = pd.read_excel(excel_file, sheet_name="Multi 21", skiprows=2, nrows=1)
+##(df.set_index([])
+##   .apply(lambda x: x.str.spl= it('|').explode())
+##   .reset_index()) 
+
+#print(df)
