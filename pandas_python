@@ -88,3 +88,16 @@ dfFlatBarGroup = dfFlatBarGroup.drop('ROUND', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
 dfFlatBarGroup.to_excel("MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
+
+#####Misc Material#####
+
+#filter out everyhing but angle only
+dfAngle = df[df['PART DESCRIPTION'].str.contains("w-beam*|s-beam*|pipe*|tube*", na=False, case=False)]
+#filter out specifically flat bar. some slipped through that were 
+dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False)]
+#sort by column MATERIAL DESCRIPTION
+dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
+#column sum = (total qty) x (length in inches)
+dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+#save to new excel file
+dfAngle.to_excel("Misc Material.xlsx", sheet_name="Sheet 1")
