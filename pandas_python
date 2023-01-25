@@ -91,13 +91,20 @@ dfFlatBarGroup.to_excel("MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
 
 #####Misc Material#####
 
-#filter out everyhing but angle only
-dfAngle = df[df['PART DESCRIPTION'].str.contains("w-beam*|s-beam*|pipe*|tube*", na=False, case=False)]
-#filter out specifically flat bar. some slipped through that were 
-dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False)]
+#filter out everyhing but misc linear only
+dfMisc = df[df['PART DESCRIPTION'].str.contains("w-beam*|s-beam*|pipe*|tube*", na=False, case=False)]
 #sort by column MATERIAL DESCRIPTION
-dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
+dfMisc = dfMisc.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
-dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfAngle.to_excel("Misc Material.xlsx", sheet_name="Sheet 1")
+dfMisc.to_excel("MiscMaterial.xlsx", sheet_name="Sheet 1")
+
+#####Misc Hardware#####
+
+#filter out everyhing already covered
+dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pipe*|tube*|screw*|bolt*|washer*|nut*|weld*", na=False, case=False)]
+#sort by column MATERIAL DESCRIPTION
+dfRemain = dfRemain.sort_values('MATERIAL DESCRIPTION')
+#save to new excel file
+dfRemain.to_excel("MiscHardware.xlsx", sheet_name="Sheet 1")
