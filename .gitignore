@@ -5,3 +5,10 @@ testdoc.xls
 testdoc.xlsx
 openpyxl_test
 .~lock.Multi21.xlsx#
+MultiAngle.xlsx
+MultiAngleOrder.xlsx
+MultiAngleSum.xlsx
+.gitignore
+MultiFlatBar.xlsx
+MultiFlatBarOrder.xlsx
+MultiFlatBarSum.xlsx
