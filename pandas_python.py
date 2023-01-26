@@ -118,7 +118,7 @@ dfNutsAndBolts = dfNutsAndBolts.drop('WEIGHT', axis=1)
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
 #get a sum of bolts by type and station
-dfShopBolts = dfShopBolts.groupby(['MATERIAL DESCRIPTION','STRUCTURES','ITEM.1']).sum(numeric_only=True).reset_index()
+dfShopBolts = dfShopBolts.groupby(['MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES','ITEM.1']).sum(numeric_only=True).reset_index()
 #add 8% or +5 to shop bolts, whichever is more
 dfShopBolts['ORDER'] = dfShopBolts['ITEM.1'].apply(lambda row:(row*1.08) if row>62 else (row+5))
 #round up
@@ -131,7 +131,7 @@ dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=Fal
 #need to fix this so it doesn't give me warnings every time
 dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['ITEM.1'] + 2),axis=1)
 #get a sum of bolts by type and station
-dfFieldBolts = dfFieldBolts.groupby(['MATERIAL DESCRIPTION','STRUCTURES', 'ITEM.1', 'ORDER']).sum(numeric_only=True).reset_index()
+dfFieldBolts = dfFieldBolts.groupby(['MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'ITEM.1', 'ORDER']).sum(numeric_only=True).reset_index()
 #save to new excel file
 dfFieldBolts.to_excel("FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
 
