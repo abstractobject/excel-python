@@ -111,13 +111,27 @@ dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].s
 #deleting assy and total columns to avoid confusion now structures are one pre line
 dfNutsAndBolts = dfNutsAndBolts.drop('ASSY.', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('TOTAL', axis=1)
+#deleting columns that don't help ordering nust and bolts
+dfNutsAndBolts = dfNutsAndBolts.drop('REV', axis=1)
+dfNutsAndBolts = dfNutsAndBolts.drop('WEIGHT', axis=1)
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-#THIS PART DOESNT DO ANYTHING YET
-dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E*", na=False, case=False)]
-dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E*", na=False, case=False)]
-#dfNutsAndBolts['SUM'] = dfNutsAndBolts.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
+#get a sum of bolts by type and station
+dfShopBolts = dfShopBolts.groupby(['MATERIAL DESCRIPTION','STRUCTURES']).sum(numeric_only=True)
+#add 8% or +5 to shop bolts, whichever is more
+dfShopBolts['ORDER'] = dfShopBolts["ITEM"].apply(lambda row:(row*1.08) if row>62 else (row+5))
+#round up
+dfShopBolts['ORDER'] = dfShopBolts["ORDER"].apply(np.ceil)
+#save to separate excel file
+dfShopBolts.to_excel("ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#filter for shop bolts and field bolts. filter is whether sheet name contains an E
+dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
+#add 2 to each bolt count
+dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row.loc['ITEM'] + 2),axis=1)
+#get a sum of bolts by type and station
+dfFieldBolts = dfFieldBolts.groupby(['MATERIAL DESCRIPTION','STRUCTURES']).sum(numeric_only=True)
 #save to new excel file
-dfNutsAndBolts.to_excel("Nuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfFieldBolts.to_excel("FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
 
 #####Misc Hardware#####
 
