@@ -127,6 +127,7 @@ dfShopBolts.to_excel("ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
 #add 2 to each bolt count
+#need to fix this so it doesn't give me warnings every time
 dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row.loc['ITEM'] + 2),axis=1)
 #get a sum of bolts by type and station
 dfFieldBolts = dfFieldBolts.groupby(['MATERIAL DESCRIPTION','STRUCTURES']).sum(numeric_only=True)
