@@ -104,7 +104,6 @@ dfMisc.to_excel("MiscMaterial.xlsx", sheet_name="Sheet 1")
 
 #filter out everyhing but nuts, bolts, and washers only
 dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)]
-dfNutsAndBolts.to_excel("DEBUGNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #sort by column MATERIAL DESCRIPTION
 dfNutsAndBolts = dfNutsAndBolts.sort_values('MATERIAL DESCRIPTION')
 #explodes entries with multiple stations to one line per station
