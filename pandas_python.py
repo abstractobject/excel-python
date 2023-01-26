@@ -107,7 +107,8 @@ dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na
 #sort by column MATERIAL DESCRIPTION
 dfNutsAndBolts = dfNutsAndBolts.sort_values('MATERIAL DESCRIPTION')
 #explodes entries with multiple stations to one line per station
-dfNutsAndBoltsG = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip())
 #deleting assy and total columns to avoid confusion now structures are one pre line
 dfNutsAndBolts = dfNutsAndBolts.drop('ASSY.', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('TOTAL', axis=1)
