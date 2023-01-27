@@ -138,9 +138,11 @@ dfShopBolts.to_excel(output_directory + "//ShopNuts&Bolts.xlsx", sheet_name="She
 #column assy bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)]
-#add 2 to each bolt count
+#add 8% or +5 to shop bolts, whichever is more
 #need to fix this so it doesn't give me warnings every time
 dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
+#round up
+dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
 #get a sum of bolts by type and station
 dfColAssyBolts = dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER']).sum(numeric_only=True).reset_index()
 #save to new excel file
