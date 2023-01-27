@@ -10,6 +10,9 @@ root.withdraw()
 #asks for input file
 excel_file = filedialog.askopenfilename()
 
+#asks for save location
+output_directory = filedialog.askdirectory()
+
 ##Multi 21 sheet
 
 #read the excel file's first sheet, set line 1 (2nd line) as header for column names
@@ -29,7 +32,7 @@ dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfAngle.to_excel("MultiAngle.xlsx", sheet_name="Sheet 1")
+dfAngle.to_excel(output_directory + "//MultiAngle.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 dfAngleGroup = dfAngle.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
@@ -45,14 +48,14 @@ dfAngleGroup['+10%'] = dfAngleGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1
 #add ORDER coumn that rounds up +10% column
 dfAngleGroup['ORDER'] = dfAngleGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfAngleGroup.to_excel("MultiAngleSum.xlsx", sheet_name="Sheet 1")
+dfAngleGroup.to_excel(output_directory + "//MultiAngleSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfAngleGroup = dfAngleGroup.drop('SUM', axis=1)
 dfAngleGroup = dfAngleGroup.drop('STOCK', axis=1)
 dfAngleGroup = dfAngleGroup.drop('ROUND', axis=1)
 dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
-dfAngleGroup.to_excel("MultiAngleOrder.xlsx", sheet_name="Sheet 1")
+dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
 
 
 #####Flat Bar order#####
@@ -64,7 +67,7 @@ dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfFlatBar.to_excel("MultiFlatBar.xlsx", sheet_name="Sheet 1")
+dfFlatBar.to_excel(output_directory + "//MultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
@@ -80,14 +83,14 @@ dfFlatBarGroup['+10%'] = dfFlatBarGroup.apply(lambda row:(row['ROUND'] * 1.1),ax
 #add ORDER coumn that rounds up +10% column
 dfFlatBarGroup['ORDER'] = dfFlatBarGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfFlatBarGroup.to_excel("MultiFlatBarSum.xlsx", sheet_name="Sheet 1")
+dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfFlatBarGroup = dfFlatBarGroup.drop('SUM', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('STOCK', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ROUND', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
-dfFlatBarGroup.to_excel("MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
+dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
 
 #####Misc Material#####
 
@@ -98,7 +101,7 @@ dfMisc = dfMisc.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfMisc.to_excel("MiscMaterial.xlsx", sheet_name="Sheet 1")
+dfMisc.to_excel(output_directory + "//MiscMaterial.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
@@ -125,7 +128,7 @@ dfShopBolts['ORDER'] = dfShopBolts['ITEM.1'].apply(lambda row:(row*1.08) if row>
 #round up
 dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
 #save to separate excel file
-dfShopBolts.to_excel("ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfShopBolts.to_excel(output_directory + "//ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
 #add 2 to each bolt count
@@ -134,7 +137,7 @@ dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['ITEM.1'] + 2),axis=1
 #get a sum of bolts by type and station
 dfFieldBolts = dfFieldBolts.groupby(['MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'ITEM.1', 'ORDER']).sum(numeric_only=True).reset_index()
 #save to new excel file
-dfFieldBolts.to_excel("FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfFieldBolts.to_excel(output_directory + "//FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
 
 #####Misc Hardware#####
 
@@ -143,4 +146,4 @@ dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pi
 #sort by column MATERIAL DESCRIPTION
 dfRemain = dfRemain.sort_values('MATERIAL DESCRIPTION')
 #save to new excel file
-dfRemain.to_excel("MiscHardware.xlsx", sheet_name="Sheet 1")
+dfRemain.to_excel(output_directory + "//MiscHardware.xlsx", sheet_name="Sheet 1")
