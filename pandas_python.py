@@ -145,10 +145,33 @@ dfShopBolts = dfShopBolts.drop('QTY', axis=1)
 dfShopBolts = pd.pivot_table(dfShopBolts, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', fill_value=0)
 #add total qty column adding together each bolt/nut/washer type
 dfShopBolts['TOTAL QTY'] = dfShopBolts.sum(axis=1)
-#add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
+#add column labeling all as "ASSY" so bolt order gets marked correctly
 dfShopBolts['USE'] = "ASSY"
 #save to excel file
 dfShopBolts.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+
+##alternate shop bolts
+#filter for shop bolts and field bolts. filter is whether sheet name contains an E
+dfShopBolts2 = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
+dfShopBolts2 = dfShopBolts2[~dfShopBolts2['DRAWING'].str.contains("CA", na=False, case=False)]
+#get a sum of bolts by type and station
+dfShopBolts2 = dfShopBolts2.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY']).sum(numeric_only=True).reset_index()
+#add 8% or +5 to shop bolts, whichever is more
+dfShopBolts2['ORDER'] = dfShopBolts2['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
+#round up
+dfShopBolts2['ORDER'] = dfShopBolts2['ORDER'].apply(np.ceil)
+#save to separate excel file
+dfShopBolts2.to_excel(output_directory + "//ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#delete qty column
+dfShopBolts2 = dfShopBolts2.drop('QTY', axis=1)
+#pivot data to match nuts and bolts order form
+dfShopBolts2 = pd.pivot_table(dfShopBolts2, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', fill_value=0)
+#add total qty column adding together each bolt/nut/washer type
+dfShopBolts2['TOTAL QTY'] = dfShopBolts2.sum(axis=1)
+#add column labeling all as "ASSY" so bolt order gets marked correctly
+dfShopBolts2['USE'] = "ASSY"
+#save to excel file
+dfShopBolts2.to_excel(output_directory + "//Assy Nuts&Bolts ORDER STATION ONLY.xlsx", sheet_name="Sheet 1")
 
 
 #column assy bolts
