@@ -207,13 +207,20 @@ dfFieldBoltsOrder['USE'] = "SHIP LOOSE"
 #save to excel file
 dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
-#added together for checking previous nuts and bolts orders
+#function for checking old nuts and bolts orders
+#adds assy bolts and col assy bolts
 dfNutsAndBoltsCheck = pd.concat([dfShopBoltsCheck, dfColAssyBoltsCheck])
+#delete drawing column
 dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
+#delete qty column
 dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
+#adds together quantities of similar nuts and bolts
 dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER']).sum(numeric_only=True).reset_index()
+#pivots info to match old nuts and bolts order form
 dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
+#adds sum column to end
 dfNutsAndBoltsCheck['TOTAL QTY'] = dfNutsAndBoltsCheck.sum(axis=1)
+#saves to new excel form
 dfNutsAndBoltsCheck.to_excel(output_directory + "//CHECK OLD Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 
