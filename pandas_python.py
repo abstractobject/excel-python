@@ -130,7 +130,8 @@ dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('DRAWING', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('STRUCTURES', axis=1)
 #only one row per type of bolt
-dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE']).sum(numeric_only=True).reset_index()
+dfNutsAndBoltsVerif['GRADE'] = dfNutsAndBoltsVerif['GRADE'].fillna("N/A")
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
 #order 3 bolts per type
 dfNutsAndBoltsVerif['TOTAL QTY'] = 3
 #add column noting these as verification bolts
@@ -143,7 +144,7 @@ dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bo
 dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
 dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
 #get a sum of bolts by type and station
-dfShopBolts = dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY']).sum(numeric_only=True).reset_index()
+dfShopBolts = dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index()
 #add 8% or +5 to shop bolts, whichever is more
 dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
 #round up
@@ -159,6 +160,7 @@ dfShopBoltsOrder = dfShopBoltsOrder.drop('DRAWING', axis=1)
 #delete qty column
 dfShopBoltsOrder = dfShopBoltsOrder.drop('QTY', axis=1)
 #pivot data to match nuts and bolts order form
+dfShopBoltsOrder['GRADE'] = dfShopBoltsOrder['GRADE'].fillna("N/A")
 dfShopBoltsOrder = pd.pivot_table(dfShopBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #add total qty column adding together each bolt/nut/washer type
 dfShopBoltsOrder['TOTAL QTY'] = dfShopBoltsOrder.sum(axis=1)
@@ -176,7 +178,7 @@ dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if r
 #round up
 dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
 #get a sum of bolts by type and station
-dfColAssyBolts = dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER']).sum(numeric_only=True).reset_index()
+dfColAssyBolts = dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index()
 #save to new excel file
 dfColAssyBolts.to_excel(output_directory + "//ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add e-sheet name to station name column
@@ -188,6 +190,7 @@ dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('DRAWING', axis=1)
 #delete qty column
 dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('QTY', axis=1)
 #pivot data to match nuts and bolts order form
+dfColAssyBoltsOrder['GRADE'] = dfColAssyBoltsOrder['GRADE'].fillna("N/A")
 dfColAssyBoltsOrder = pd.pivot_table(dfColAssyBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #add total qty column adding together each bolt/nut/washer type
 dfColAssyBoltsOrder['TOTAL QTY'] = dfColAssyBoltsOrder.sum(axis=1)
@@ -203,7 +206,7 @@ dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=Fal
 #need to fix this so it doesn't give me warnings every time
 dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
 #get a sum of bolts by type and station
-dfFieldBolts = dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER']).sum(numeric_only=True).reset_index()
+dfFieldBolts = dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index()
 #save to new excel file
 dfFieldBolts.to_excel(output_directory + "//FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add e-sheet name to station name column
@@ -214,6 +217,7 @@ dfFieldBoltsOrder = dfFieldBoltsOrder.drop('DRAWING', axis=1)
 #delete qty column
 dfFieldBoltsOrder = dfFieldBoltsOrder.drop('QTY', axis=1)
 #pivot data to match nuts and bolts order form
+dfFieldBoltsOrder['GRADE'] = dfFieldBoltsOrder['GRADE'].fillna("N/A")
 dfFieldBoltsOrder = pd.pivot_table(dfFieldBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #add total qty column adding together each bolt/nut/washer type
 dfFieldBoltsOrder['TOTAL QTY'] = dfFieldBoltsOrder.sum(axis=1)
@@ -230,7 +234,8 @@ dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
 #delete qty column
 dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
 #adds together quantities of similar nuts and bolts
-dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER']).sum(numeric_only=True).reset_index()
+dfNutsAndBoltsCheck['GRADE'] = dfNutsAndBoltsCheck['GRADE'].fillna("N/A")
+dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index()
 #pivots info to match old nuts and bolts order form
 dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #adds sum column to end
