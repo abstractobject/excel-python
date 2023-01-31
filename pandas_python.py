@@ -123,6 +123,21 @@ dfNutsAndBolts = dfNutsAndBolts.drop('ITEM', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('REV', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('WEIGHT', axis=1)
 
+#verification hardware
+dfNutsAndBoltsVerif = dfNutsAndBolts.copy(deep=True)
+#delete irrelevant columns
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('DRAWING', axis=1)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('STRUCTURES', axis=1)
+#only one row per type of bolt
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE']).sum(numeric_only=True).reset_index()
+#order 3 bolts per type
+dfNutsAndBoltsVerif['TOTAL QTY'] = 3
+#add column noting these as verification bolts
+dfNutsAndBoltsVerif['USE'] = "Samples"
+#save to new excel file
+dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+
 #shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
