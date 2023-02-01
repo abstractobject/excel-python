@@ -109,7 +109,7 @@ dfMisc.to_excel(output_directory + "//MiscMaterial.xlsx", sheet_name="Sheet 1")
 #####NUTS AND BOLTS#####
 
 #filter out everyhing but nuts, bolts, and washers only
-dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)]
+dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)].copy(deep=True)
 #sort by column MATERIAL DESCRIPTION
 dfNutsAndBolts = dfNutsAndBolts.sort_values('MATERIAL DESCRIPTION')
 #explodes entries with multiple stations to one line per station
@@ -141,7 +141,7 @@ dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bo
 
 #shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
+dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
 dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
 #get a sum of bolts by type and station
 dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
@@ -171,9 +171,8 @@ dfShopBoltsOrder.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx", she
 
 #column assy bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)]
+dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
 #add 8% or +5 to shop bolts, whichever is more
-#need to fix this so it doesn't give me warnings every time
 dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
 #round up
 dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
@@ -201,9 +200,8 @@ dfColAssyBoltsOrder.to_excel(output_directory + "//Column Assy Nuts&Bolts ORDER.
 
 #field bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)]
+dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
 #add 2 to each bolt count
-#need to fix this so it doesn't give me warnings every time
 dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
 #get a sum of bolts by type and station
 dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
