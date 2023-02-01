@@ -35,7 +35,7 @@ dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfAngle.to_excel(output_directory + "//MultiAngle.xlsx", sheet_name="Sheet 1")
+dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 dfAngleGroup = dfAngle.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
@@ -51,7 +51,7 @@ dfAngleGroup['+10%'] = dfAngleGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1
 #add ORDER coumn that rounds up +10% column
 dfAngleGroup['ORDER'] = dfAngleGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfAngleGroup.to_excel(output_directory + "//MultiAngleSum.xlsx", sheet_name="Sheet 1")
+dfAngleGroup.to_excel(output_directory + "//DEBUGMultiAngleSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfAngleGroup = dfAngleGroup.drop('SUM', axis=1)
 dfAngleGroup = dfAngleGroup.drop('STOCK', axis=1)
@@ -70,7 +70,7 @@ dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfFlatBar.to_excel(output_directory + "//MultiFlatBar.xlsx", sheet_name="Sheet 1")
+dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
@@ -86,7 +86,7 @@ dfFlatBarGroup['+10%'] = dfFlatBarGroup.apply(lambda row:(row['ROUND'] * 1.1),ax
 #add ORDER coumn that rounds up +10% column
 dfFlatBarGroup['ORDER'] = dfFlatBarGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarSum.xlsx", sheet_name="Sheet 1")
+dfFlatBarGroup.to_excel(output_directory + "//DEBUGMultiFlatBarSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfFlatBarGroup = dfFlatBarGroup.drop('SUM', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('STOCK', axis=1)
@@ -150,7 +150,7 @@ dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 
 #round up
 dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
 #save to separate excel file
-dfShopBolts.to_excel(output_directory + "//ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfShopBolts.to_excel(output_directory + "//DEBUGShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add sheet name to station name column'
 dfShopBoltsCheck = dfShopBolts.copy(deep=True)
 dfShopBoltsOrder = dfShopBolts.copy(deep=True)
@@ -179,7 +179,7 @@ dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
 #get a sum of bolts by type and station
 dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
 #save to new excel file
-dfColAssyBolts.to_excel(output_directory + "//ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfColAssyBolts.to_excel(output_directory + "//DEBUGColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add e-sheet name to station name column
 dfColAssyBoltsCheck = dfColAssyBolts.copy(deep=True)
 dfColAssyBoltsOrder = dfColAssyBolts.copy(deep=True)
@@ -206,7 +206,7 @@ dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
 #get a sum of bolts by type and station
 dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
 #save to new excel file
-dfFieldBolts.to_excel(output_directory + "//FieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfFieldBolts.to_excel(output_directory + "//DEBUGFieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add e-sheet name to station name column
 dfFieldBoltsOrder = dfFieldBolts
 dfFieldBoltsOrder['STRUCTURES'] = dfFieldBoltsOrder['DRAWING'] + ' | ' + dfFieldBoltsOrder['STRUCTURES']
