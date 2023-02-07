@@ -250,3 +250,26 @@ dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pi
 dfRemain = dfRemain.sort_values('MATERIAL DESCRIPTION')
 #save to new excel file
 dfRemain.to_excel(output_directory + "//MiscHardware.xlsx", sheet_name="Sheet 1")
+
+
+#filter out everything but clamp plates
+dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
+#sory be part number column
+dfClampPl = dfClampPl.sort_values('PART NUMBER')
+#delete unnecessary columns
+dfClampPl = dfClampPl.drop('REV', axis=1)
+dfClampPl = dfClampPl.drop('ITEM', axis=1)
+dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
+dfClampPl = dfClampPl.drop('SHEET', axis=1)
+dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
+dfClampPl = dfClampPl.drop('WIDTH', axis=1)
+dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
+dfClampPl = dfClampPl.drop('DRAWING', axis=1)
+dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
+dfClampPl = dfClampPl.drop('QTY', axis=1)
+dfClampPl = dfClampPl.drop('ASSY.', axis=1)
+#add together clamp plates of the same name
+dfClampPl.groupby(['PART NUMBER', 'TOTAL'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+#save to new excel file
+dfClampPl.to_excel(output_directory + "//DEBUGclampPl.xlsx", sheet_name="Sheet 1")
+
