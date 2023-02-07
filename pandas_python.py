@@ -257,6 +257,7 @@ dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].cop
 #sory be part number column
 dfClampPl = dfClampPl.sort_values('PART NUMBER')
 #delete unnecessary columns
+dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
 dfClampPl = dfClampPl.drop('REV', axis=1)
 dfClampPl = dfClampPl.drop('ITEM', axis=1)
 dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
@@ -268,8 +269,10 @@ dfClampPl = dfClampPl.drop('DRAWING', axis=1)
 dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
 dfClampPl = dfClampPl.drop('QTY', axis=1)
 dfClampPl = dfClampPl.drop('ASSY.', axis=1)
+dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
+dfClampPl = dfClampPl.drop('GRADE', axis=1)
 #add together clamp plates of the same name
-dfClampPl.groupby(['PART NUMBER', 'TOTAL'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
 #save to new excel file
-dfClampPl.to_excel(output_directory + "//DEBUGclampPl.xlsx", sheet_name="Sheet 1")
+dfClampPl.to_excel(output_directory + "//ClampPlates.xlsx", sheet_name="Sheet 1")
 
