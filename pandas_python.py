@@ -131,7 +131,7 @@ dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('STRUCTURES', axis=1)
 #only one row per type of bolt
 dfNutsAndBoltsVerif['GRADE'] = dfNutsAndBoltsVerif['GRADE'].fillna("N/A")
-dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
 #order 3 bolts per type
 dfNutsAndBoltsVerif['TOTAL QTY'] = 3
 #add column noting these as verification bolts
