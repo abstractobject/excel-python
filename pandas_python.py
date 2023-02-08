@@ -268,20 +268,20 @@ dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xls
 
 #function for checking old nuts and bolts orders
 #adds assy bolts and col assy bolts
-dfNutsAndBoltsCheck = pd.concat([dfShopBoltsCheck, dfColAssyBoltsCheck])
+#dfNutsAndBoltsCheck = pd.concat([dfShopBoltsCheck, dfColAssyBoltsCheck])
 #delete drawing column
-dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
+#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
 #delete qty column
-dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
+#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
 #adds together quantities of similar nuts and bolts
-dfNutsAndBoltsCheck['GRADE'] = dfNutsAndBoltsCheck['GRADE'].fillna("N/A")
-dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+#dfNutsAndBoltsCheck['GRADE'] = dfNutsAndBoltsCheck['GRADE'].fillna("N/A")
+#dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
 #pivots info to match old nuts and bolts order form
-dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
+#dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #adds sum column to end
-dfNutsAndBoltsCheck['TOTAL QTY'] = dfNutsAndBoltsCheck.sum(axis=1)
+#dfNutsAndBoltsCheck['TOTAL QTY'] = dfNutsAndBoltsCheck.sum(axis=1)
 #saves to new excel form
-dfNutsAndBoltsCheck.to_excel(output_directory + "//CHECK OLD Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+#dfNutsAndBoltsCheck.to_excel(output_directory + "//CHECK OLD Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 
 #####Misc Hardware#####
