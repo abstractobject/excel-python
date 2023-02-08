@@ -208,63 +208,133 @@ dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
         .apply(lambda d: d.append(dfShopBolts3))
         .iloc[:-2]
         .reset_index(drop=True))
-dfShopBolts4.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx.xlsx", sheet_name="Sheet 1")
+dfShopBolts4.to_excel(output_directory + "//Assy Hardware Order.xlsx.xlsx", sheet_name="Sheet 1")
 
 
-#column assy bolts
-#filter for shop bolts and field bolts. filter is whether sheet name contains an E
+#NEW col assy bolts
+#filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
 dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
+#get a sum of bolts by type and station
+dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+#add sheet name to station name column'
+dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'] + ' | ' + dfColAssyBolts['STRUCTURES']
+#delete unnecessary columns
+dfColAssyBolts = dfColAssyBolts.drop('DRAWING', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('SHEET', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('MAIN NUMBER', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('PART NUMBER', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('WIDTH', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('WIDTH.1', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('LENGTH', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('LENGTH.1', axis=1)
+dfColAssyBolts.loc[dfColAssyBolts['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
+dfColAssyBolts.loc[dfColAssyBolts['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #add 8% or +5 to shop bolts, whichever is more
 dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
 #round up
 dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
-#get a sum of bolts by type and station
-dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#save to new excel file
-dfColAssyBolts.to_excel(output_directory + "//DEBUGColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
-#add e-sheet name to station name column
-dfColAssyBoltsCheck = dfColAssyBolts.copy(deep=True)
-dfColAssyBoltsOrder = dfColAssyBolts.copy(deep=True)
-dfColAssyBoltsOrder['STRUCTURES'] = dfColAssyBoltsOrder['DRAWING'] + ' | ' + dfColAssyBoltsOrder['STRUCTURES']
-#delete e-sheet name column
-dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('DRAWING', axis=1)
-#delete qty column
-dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('QTY', axis=1)
-#pivot data to match nuts and bolts order form
-dfColAssyBoltsOrder['GRADE'] = dfColAssyBoltsOrder['GRADE'].fillna("N/A")
-dfColAssyBoltsOrder = pd.pivot_table(dfColAssyBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#add total qty column adding together each bolt/nut/washer type
-dfColAssyBoltsOrder['TOTAL QTY'] = dfColAssyBoltsOrder.sum(axis=1)
-#add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-dfColAssyBoltsOrder['USE'] = "COLUMN ASSY"
-#save to excel file
-dfColAssyBoltsOrder.to_excel(output_directory + "//Column Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+#delete unnecessary columns
+dfColAssyBolts = dfColAssyBolts.drop('PART DESCRIPTION', axis=1)
+dfColAssyBolts = dfColAssyBolts.drop('QTY', axis=1)
+dfColAssyBolts['USE'] = "COLUMN ASSY"
+#save to separate excel file
+dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
+# For each grouping Apply insert headers
+dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
+        .apply(lambda d: d.append(dfShopBolts2))
+        .iloc[:-2]
+        .reset_index(drop=True))
+dfColAssyBolts3.to_excel(output_directory + "//Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
-#field bolts
-#filter for shop bolts and field bolts. filter is whether sheet name contains an E
+# #column assy bolts
+# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
+# dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
+# #add 8% or +5 to shop bolts, whichever is more
+# dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
+# #round up
+# dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
+# #get a sum of bolts by type and station
+# dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+# #save to new excel file
+# dfColAssyBolts.to_excel(output_directory + "//DEBUGColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
+# #add e-sheet name to station name column
+# dfColAssyBoltsCheck = dfColAssyBolts.copy(deep=True)
+# dfColAssyBoltsOrder = dfColAssyBolts.copy(deep=True)
+# dfColAssyBoltsOrder['STRUCTURES'] = dfColAssyBoltsOrder['DRAWING'] + ' | ' + dfColAssyBoltsOrder['STRUCTURES']
+# #delete e-sheet name column
+# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('DRAWING', axis=1)
+# #delete qty column
+# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('QTY', axis=1)
+# #pivot data to match nuts and bolts order form
+# dfColAssyBoltsOrder['GRADE'] = dfColAssyBoltsOrder['GRADE'].fillna("N/A")
+# dfColAssyBoltsOrder = pd.pivot_table(dfColAssyBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
+# #add total qty column adding together each bolt/nut/washer type
+# dfColAssyBoltsOrder['TOTAL QTY'] = dfColAssyBoltsOrder.sum(axis=1)
+# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
+# dfColAssyBoltsOrder['USE'] = "COLUMN ASSY"
+# #save to excel file
+# dfColAssyBoltsOrder.to_excel(output_directory + "//Column Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+
+#NEW field bolts
+#filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
 dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
+#get a sum of bolts by type and station
+dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+#add sheet name to station name column'
+dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'] + ' | ' + dfFieldBolts['STRUCTURES']
+#delete unnecessary columns
+dfFieldBolts = dfFieldBolts.drop('DRAWING', axis=1)
+dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
+dfFieldBolts = dfFieldBolts.drop('MAIN NUMBER', axis=1)
+dfFieldBolts = dfFieldBolts.drop('PART NUMBER', axis=1)
+dfFieldBolts = dfFieldBolts.drop('WIDTH', axis=1)
+dfFieldBolts = dfFieldBolts.drop('WIDTH.1', axis=1)
+dfFieldBolts = dfFieldBolts.drop('LENGTH', axis=1)
+dfFieldBolts = dfFieldBolts.drop('LENGTH.1', axis=1)
+dfFieldBolts.loc[dfFieldBolts['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
+dfFieldBolts.loc[dfFieldBolts['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #add 2 to each bolt count
 dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
-#get a sum of bolts by type and station
-dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#save to new excel file
-dfFieldBolts.to_excel(output_directory + "//DEBUGFieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
-#add e-sheet name to station name column
-dfFieldBoltsOrder = dfFieldBolts
-dfFieldBoltsOrder['STRUCTURES'] = dfFieldBoltsOrder['DRAWING'] + ' | ' + dfFieldBoltsOrder['STRUCTURES']
-#delete e-sheet name column
-dfFieldBoltsOrder = dfFieldBoltsOrder.drop('DRAWING', axis=1)
-#delete qty column
-dfFieldBoltsOrder = dfFieldBoltsOrder.drop('QTY', axis=1)
-#pivot data to match nuts and bolts order form
-dfFieldBoltsOrder['GRADE'] = dfFieldBoltsOrder['GRADE'].fillna("N/A")
-dfFieldBoltsOrder = pd.pivot_table(dfFieldBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#add total qty column adding together each bolt/nut/washer type
-dfFieldBoltsOrder['TOTAL QTY'] = dfFieldBoltsOrder.sum(axis=1)
-#add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-dfFieldBoltsOrder['USE'] = "SHIP LOOSE"
-#save to excel file
-dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+#delete unnecessary columns
+dfFieldBolts = dfFieldBolts.drop('PART DESCRIPTION', axis=1)
+dfFieldBolts = dfFieldBolts.drop('QTY', axis=1)
+dfFieldBolts['USE'] = "SHIP LOOSE"
+#save to separate excel file
+dfFieldBolts.to_excel(output_directory + "//DEBUG-NEW-ShipLooseNuts&Bolts.xlsx", sheet_name="Sheet 1")
+dfFieldBolts2 = pd.DataFrame([[''] * len(dfFieldBolts.columns)], columns=dfFieldBolts.columns)
+# For each grouping Apply insert headers
+dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
+        .apply(lambda d: d.append(dfFieldBolts2))
+        .iloc[:-2]
+        .reset_index(drop=True))
+dfFieldBolts3.to_excel(output_directory + "//Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
+
+# #field bolts
+# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
+# dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
+# #add 2 to each bolt count
+# dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
+# #get a sum of bolts by type and station
+# dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+# #save to new excel file
+# dfFieldBolts.to_excel(output_directory + "//DEBUGFieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
+# #add e-sheet name to station name column
+# dfFieldBoltsOrder = dfFieldBolts
+# dfFieldBoltsOrder['STRUCTURES'] = dfFieldBoltsOrder['DRAWING'] + ' | ' + dfFieldBoltsOrder['STRUCTURES']
+# #delete e-sheet name column
+# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('DRAWING', axis=1)
+# #delete qty column
+# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('QTY', axis=1)
+# #pivot data to match nuts and bolts order form
+# dfFieldBoltsOrder['GRADE'] = dfFieldBoltsOrder['GRADE'].fillna("N/A")
+# dfFieldBoltsOrder = pd.pivot_table(dfFieldBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
+# #add total qty column adding together each bolt/nut/washer type
+# dfFieldBoltsOrder['TOTAL QTY'] = dfFieldBoltsOrder.sum(axis=1)
+# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
+# dfFieldBoltsOrder['USE'] = "SHIP LOOSE"
+# #save to excel file
+# dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 #function for checking old nuts and bolts orders
 #adds assy bolts and col assy bolts
