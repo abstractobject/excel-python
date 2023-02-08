@@ -32,6 +32,8 @@ dfAngle = df[df['PART DESCRIPTION'].str.contains("Angle*", na=False, case=False)
 dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False)]
 #sort by column MATERIAL DESCRIPTION
 dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
+#round up angles over half a stock length to a whole stock piece
+dfAngle.loc[dfAngle['LENGTH.1'] >240, 'LENGTH.1'] = 480
 #column sum = (total qty) x (length in inches)
 dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
@@ -67,6 +69,8 @@ dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="S
 dfFlatBar = df[df['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False)]
 #sort by column MATERIAL DESCRIPTION
 dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
+#round up flat bar over half a stock length to a whole stock piece
+dfFlatBar.loc[dfFlatBar['LENGTH.1'] >120, 'LENGTH.1'] = 240
 #column sum = (total qty) x (length in inches)
 dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
@@ -139,33 +143,33 @@ dfNutsAndBoltsVerif['USE'] = "Samples"
 #save to new excel file
 dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
-#shop bolts
+# OLD shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
-dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
+#dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
+#dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
 #get a sum of bolts by type and station
-dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
+#dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
 #add 8% or +5 to shop bolts, whichever is more
-dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
+#dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
 #round up
-dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
+#dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
 #save to separate excel file
 #dfShopBolts.to_excel(output_directory + "//DEBUGShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #add sheet name to station name column'
-dfShopBoltsCheck = dfShopBolts.copy(deep=True)
-dfShopBoltsOrder = dfShopBolts.copy(deep=True)
-dfShopBoltsOrder['STRUCTURES'] = dfShopBoltsOrder['DRAWING'] + ' | ' + dfShopBoltsOrder['STRUCTURES']
+#dfShopBoltsCheck = dfShopBolts.copy(deep=True)
+#dfShopBoltsOrder = dfShopBolts.copy(deep=True)
+#dfShopBoltsOrder['STRUCTURES'] = dfShopBoltsOrder['DRAWING'] + ' | ' + dfShopBoltsOrder['STRUCTURES']
 #delete sheet name column
-dfShopBoltsOrder = dfShopBoltsOrder.drop('DRAWING', axis=1)
+#dfShopBoltsOrder = dfShopBoltsOrder.drop('DRAWING', axis=1)
 #delete qty column
-dfShopBoltsOrder = dfShopBoltsOrder.drop('QTY', axis=1)
+#dfShopBoltsOrder = dfShopBoltsOrder.drop('QTY', axis=1)
 #pivot data to match nuts and bolts order form
-dfShopBoltsOrder['GRADE'] = dfShopBoltsOrder['GRADE'].fillna("N/A")
-dfShopBoltsOrder = pd.pivot_table(dfShopBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
+#dfShopBoltsOrder['GRADE'] = dfShopBoltsOrder['GRADE'].fillna("N/A")
+#dfShopBoltsOrder = pd.pivot_table(dfShopBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
 #add total qty column adding together each bolt/nut/washer type
-dfShopBoltsOrder['TOTAL QTY'] = dfShopBoltsOrder.sum(axis=1)
+#dfShopBoltsOrder['TOTAL QTY'] = dfShopBoltsOrder.sum(axis=1)
 #add column labeling all as "ASSY" so bolt order gets marked correctly
-dfShopBoltsOrder['USE'] = "ASSY"
+#dfShopBoltsOrder['USE'] = "ASSY"
 #save to excel file
 #dfShopBoltsOrder.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
