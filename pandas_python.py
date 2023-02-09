@@ -242,7 +242,7 @@ dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx",
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
 # For each grouping Apply insert headers
 dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfShopBolts2))
+        .apply(lambda d: d.append(dfColAssyBolts2))
         .iloc[:-2]
         .reset_index(drop=True))
 dfColAssyBolts3.to_excel(output_directory + "//Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
