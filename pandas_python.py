@@ -177,8 +177,12 @@ dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bo
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
 dfShopBolts2 = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
 dfShopBolts2 = dfShopBolts2[~dfShopBolts2['DRAWING'].str.contains("CA", na=False, case=False)]
+#function for sorting bolts by dia
+dfShopBolts2['DIA'] = np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
+                   np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
+                   np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
 #get a sum of bolts by type and station
-dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
 dfShopBolts2['STRUCTURES'] = dfShopBolts2['DRAWING'] + ' | ' + dfShopBolts2['STRUCTURES']
 #delete unnecessary columns
@@ -202,6 +206,8 @@ dfShopBolts2 = dfShopBolts2.drop('QTY', axis=1)
 dfShopBolts2['USE'] = "ASSY"
 #save to separate excel file
 dfShopBolts2.to_excel(output_directory + "//DEBUG-NEW-ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#delete unnecessary column
+dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
 dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
 # For each grouping Apply insert headers
 dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
@@ -214,8 +220,12 @@ dfShopBolts4.to_excel(output_directory + "//Assy Hardware Order.xlsx.xlsx", shee
 #NEW col assy bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
 dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
+#function for sorting bolts by dia
+dfColAssyBolts['DIA'] = np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
+                   np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
+                   np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
 #get a sum of bolts by type and station
-dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
 dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'] + ' | ' + dfColAssyBolts['STRUCTURES']
 #delete unnecessary columns
@@ -239,6 +249,8 @@ dfColAssyBolts = dfColAssyBolts.drop('QTY', axis=1)
 dfColAssyBolts['USE'] = "COLUMN ASSY"
 #save to separate excel file
 dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#delete unnecessary column
+dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
 # For each grouping Apply insert headers
 dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
@@ -280,7 +292,12 @@ dfColAssyBolts3.to_excel(output_directory + "//Col Assy Hardware Order.xlsx", sh
 #filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
 dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
 #get a sum of bolts by type and station
-dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+dfFieldBolts['DIA'] = "OTHER"
+#function for sorting bolts by dia
+dfFieldBolts['DIA'] = np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
+                   np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
+                   np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
+dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
 dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'] + ' | ' + dfFieldBolts['STRUCTURES']
 #delete unnecessary columns
@@ -302,6 +319,9 @@ dfFieldBolts = dfFieldBolts.drop('QTY', axis=1)
 dfFieldBolts['USE'] = "SHIP LOOSE"
 #save to separate excel file
 dfFieldBolts.to_excel(output_directory + "//DEBUG-NEW-ShipLooseNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#delete unnecessary column
+dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
+#function for adding a blank line after every sheet/station
 dfFieldBolts2 = pd.DataFrame([[''] * len(dfFieldBolts.columns)], columns=dfFieldBolts.columns)
 # For each grouping Apply insert headers
 dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
