@@ -23,6 +23,8 @@ df = df[1:]
 #rename column "ITEM.1" to "QTY"
 df.rename(columns = {'ITEM.1':'QTY'}, inplace=True)
 
+#get project name
+projectName = df.loc[2]['PROJECT']
 
 #####Angle order#####
 
@@ -37,9 +39,11 @@ dfAngle.loc[dfAngle['LENGTH.1'] >240, 'LENGTH.1'] = 480
 #column sum = (total qty) x (length in inches)
 dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
+#dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
 #add all of each material together
-dfAngleGroup = dfAngle.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
+#dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
+dfAngleGroup = dfAngle.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+#dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfAngleGroup = dfAngleGroup.drop('REV', axis=1)
 dfAngleGroup = dfAngleGroup.drop('ITEM', axis=1)
@@ -53,14 +57,14 @@ dfAngleGroup['+10%'] = dfAngleGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1
 #add ORDER coumn that rounds up +10% column
 dfAngleGroup['ORDER'] = dfAngleGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfAngleGroup.to_excel(output_directory + "//DEBUGMultiAngleSum.xlsx", sheet_name="Sheet 1")
+dfAngleGroup.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfAngleGroup = dfAngleGroup.drop('SUM', axis=1)
 dfAngleGroup = dfAngleGroup.drop('STOCK', axis=1)
 dfAngleGroup = dfAngleGroup.drop('ROUND', axis=1)
 dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
-dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
+#dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
 
 
 #####Flat Bar order#####
@@ -74,9 +78,10 @@ dfFlatBar.loc[dfFlatBar['LENGTH.1'] >120, 'LENGTH.1'] = 240
 #column sum = (total qty) x (length in inches)
 dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
+#dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
-dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
+dfFlatBarGroup= dfFlatBar.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+#dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ITEM', axis=1)
@@ -90,14 +95,21 @@ dfFlatBarGroup['+10%'] = dfFlatBarGroup.apply(lambda row:(row['ROUND'] * 1.1),ax
 #add ORDER coumn that rounds up +10% column
 dfFlatBarGroup['ORDER'] = dfFlatBarGroup['+10%'].apply(np.ceil)
 #save final product to different excel file
-dfFlatBarGroup.to_excel(output_directory + "//DEBUGMultiFlatBarSum.xlsx", sheet_name="Sheet 1")
+dfFlatBarGroup.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfFlatBarGroup = dfFlatBarGroup.drop('SUM', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('STOCK', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ROUND', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
-dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
+#dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
+
+#Combined Anglematic Order#
+
+dfAnglematicInput = [dfAngleGroup,dfFlatBarGroup[1:]]
+dfAnglematic = pd.concat(dfAnglematicInput)
+dfAnglematic['HEAT #'] = None
+dfAnglematic.to_excel(output_directory + "//" + projectName + " Anglematic Order.xlsx", sheet_name="Sheet 1")
 
 #####Misc Material#####
 
@@ -108,7 +120,7 @@ dfMisc = dfMisc.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
 dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
-dfMisc.to_excel(output_directory + "//MiscMaterial.xlsx", sheet_name="Sheet 1")
+dfMisc.to_excel(output_directory + "//" + projectName + " Misc Material.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
@@ -141,7 +153,7 @@ dfNutsAndBoltsVerif['TOTAL QTY'] = 3
 #add column noting these as verification bolts
 dfNutsAndBoltsVerif['USE'] = "Samples"
 #save to new excel file
-dfNutsAndBoltsVerif.to_excel(output_directory + "//Verification Hardware Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
+dfNutsAndBoltsVerif.to_excel(output_directory + "//" + projectName + " Verification Hardware Order.xlsx", sheet_name="Sheet 1")
 
 # OLD shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
@@ -205,7 +217,7 @@ dfShopBolts2 = dfShopBolts2.drop('PART DESCRIPTION', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('QTY', axis=1)
 dfShopBolts2['USE'] = "ASSY"
 #save to separate excel file
-dfShopBolts2.to_excel(output_directory + "//DEBUG-NEW-ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#dfShopBolts2.to_excel(output_directory + "//DEBUG-NEW-ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
 dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
@@ -214,7 +226,7 @@ dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
         .apply(lambda d: d.append(dfShopBolts3))
         .iloc[:-2]
         .reset_index(drop=True))
-dfShopBolts4.to_excel(output_directory + "//Assy Hardware Order.xlsx.xlsx", sheet_name="Sheet 1")
+dfShopBolts4.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
 #NEW col assy bolts
@@ -248,7 +260,7 @@ dfColAssyBolts = dfColAssyBolts.drop('PART DESCRIPTION', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('QTY', axis=1)
 dfColAssyBolts['USE'] = "COLUMN ASSY"
 #save to separate excel file
-dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
@@ -257,7 +269,7 @@ dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
         .apply(lambda d: d.append(dfColAssyBolts2))
         .iloc[:-2]
         .reset_index(drop=True))
-dfColAssyBolts3.to_excel(output_directory + "//Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
+dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 # #column assy bolts
 # #filter for shop bolts and field bolts. filter is whether sheet name contains an E
@@ -318,7 +330,7 @@ dfFieldBolts = dfFieldBolts.drop('PART DESCRIPTION', axis=1)
 dfFieldBolts = dfFieldBolts.drop('QTY', axis=1)
 dfFieldBolts['USE'] = "SHIP LOOSE"
 #save to separate excel file
-dfFieldBolts.to_excel(output_directory + "//DEBUG-NEW-ShipLooseNuts&Bolts.xlsx", sheet_name="Sheet 1")
+#dfFieldBolts.to_excel(output_directory + "//DEBUG-NEW-ShipLooseNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
 #function for adding a blank line after every sheet/station
@@ -328,7 +340,7 @@ dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
         .apply(lambda d: d.append(dfFieldBolts2))
         .iloc[:-2]
         .reset_index(drop=True))
-dfFieldBolts3.to_excel(output_directory + "//Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
+dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 
 # #field bolts
 # #filter for shop bolts and field bolts. filter is whether sheet name contains an E
@@ -381,7 +393,7 @@ dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pi
 #sort by column MATERIAL DESCRIPTION
 dfRemain = dfRemain.sort_values('MATERIAL DESCRIPTION')
 #save to new excel file
-dfRemain.to_excel(output_directory + "//MiscHardware.xlsx", sheet_name="Sheet 1")
+dfRemain.to_excel(output_directory + "//" + projectName + " Misc Hardware.xlsx", sheet_name="Sheet 1")
 
 
 #filter out everything but clamp plates
@@ -406,5 +418,5 @@ dfClampPl = dfClampPl.drop('GRADE', axis=1)
 #add together clamp plates of the same name
 dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
 #save to new excel file
-dfClampPl.to_excel(output_directory + "//ClampPlates.xlsx", sheet_name="Sheet 1")
+dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
