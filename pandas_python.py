@@ -2,6 +2,7 @@ import pandas as pd
 import tkinter as tk
 import numpy as np
 from tkinter import filedialog
+from ortools.linear_solver import pywraplp
 
 #required before we can ask for input file
 root = tk.Tk()
@@ -35,14 +36,16 @@ dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, c
 #sort by column MATERIAL DESCRIPTION
 dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
 #round up angles over half a stock length to a whole stock piece
-dfAngle.loc[dfAngle['LENGTH.1'] >240, 'LENGTH.1'] = 480
+dfAngleRound = dfAngle.copy(deep=True)
+dfAngleRound.loc[dfAngleRound['LENGTH.1'] >240, 'LENGTH.1'] = 480
 #column sum = (total qty) x (length in inches)
-dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfAngleSum = dfAngleRound
+dfAngleSum['SUM'] = dfAngleSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 #dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 #dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
-dfAngleGroup = dfAngle.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+dfAngleGroup = dfAngleSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
 #dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfAngleGroup = dfAngleGroup.drop('REV', axis=1)
@@ -65,6 +68,98 @@ dfAngleGroup = dfAngleGroup.drop('ROUND', axis=1)
 dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
 #dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
+
+dfAngleNest = dfAngle.copy(deep=True)
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
+dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
+dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
+dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])]
+dfAngleNest = dfAngleNest.drop('QTY', axis=1)
+dfAngleNest = dfAngleNest.drop('DRAWING', axis=1)
+dfAngleNest = dfAngleNest.drop('REV', axis=1)
+dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
+dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
+dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
+dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
+dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
+dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
+dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
+dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
+#dfAngleNest = dfAngleNest.drop('SUM', axis=1)
+dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
+#print(dfAngleNest['LENGTH.1'].to_string(index=False))
+def create_data_model():
+    data = {}
+    data['weights'] = dfAngleNest['LENGTH.1'].values.tolist()
+    #data['items'] = dfAngleNest['PART NUMBER'].values.tolist()
+    data['items'] = list(range(len(data['weights'])))
+    data['bins'] = data['items']
+    data['bin_capacity'] = 480
+    return data
+
+def main():
+    data = create_data_model()
+
+    # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('SCIP')
+
+    if not solver:
+        return
+
+    # Variables
+    # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+    # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+    # Constraints
+    # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+    # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+    # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL:
+        num_bins = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                if bin_items:
+                    num_bins += 1
+                    print('Stick number', j)
+                    print('  Items nested:', bin_items)
+                    print('  Total length:', bin_weight)
+                    print()
+        print()
+        print('Number of sticks used:', num_bins)
+        print('Time = ', solver.WallTime(), ' milliseconds')
+    else:
+        print('The problem does not have an optimal solution.')
+
+
+if __name__ == '__main__':
+    main()
 
 
 #####Flat Bar order#####
