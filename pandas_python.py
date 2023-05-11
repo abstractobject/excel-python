@@ -74,7 +74,7 @@ dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip(
 dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
 dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
 dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
-dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])]
+dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
 dfAngleNest = dfAngleNest.drop('QTY', axis=1)
 dfAngleNest = dfAngleNest.drop('DRAWING', axis=1)
 dfAngleNest = dfAngleNest.drop('REV', axis=1)
@@ -86,9 +86,8 @@ dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
 dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
 dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
-#dfAngleNest = dfAngleNest.drop('SUM', axis=1)
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
-#print(dfAngleNest['LENGTH.1'].to_string(index=False))
+
 def create_data_model():
     data = {}
     data['weights'] = dfAngleNest['LENGTH.1'].values.tolist()
@@ -148,7 +147,7 @@ def main():
                 if bin_items:
                     num_bins += 1
                     print('Stick number', j)
-                    print('  Items nested:', bin_items)
+                    print('  Items nested:', dfAngleNest.loc[bin_items,'PART NUMBER'])
                     print('  Total length:', bin_weight)
                     print()
         print()
@@ -515,3 +514,17 @@ dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MA
 #save to new excel file
 dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
+LARGE_FONT= ("Verdana", 12)
+NORM_FONT = ("Helvetica", 10)
+SMALL_FONT = ("Helvetica", 8)
+
+def popupmsg(msg):
+    popup = tk.Tk()
+    popup.wm_title("!")
+    label = tk.Label(popup, text=msg, font=NORM_FONT)
+    label.pack(side="top", fill="x", pady=10)
+    B1 = tk.Button(popup, text="Okay", command = popup.destroy)
+    B1.pack()
+    popup.mainloop()
+
+popupmsg("Complete")
