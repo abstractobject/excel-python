@@ -88,77 +88,79 @@ dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
-def create_data_model():
-    data = {}
-    data['weights'] = dfAngleNest['LENGTH.1'].values.tolist()
-    #data['items'] = dfAngleNest['PART NUMBER'].values.tolist()
-    data['items'] = list(range(len(data['weights'])))
-    data['bins'] = data['items']
-    data['bin_capacity'] = 480
-    return data
+for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):    
+    
+    def create_data_model():
+        data = {}
+        data['weights'] = dfAngleType['LENGTH.1'].values.tolist()
+        #data['items'] = dfAngleNest['PART NUMBER'].values.tolist()
+        data['items'] = list(range(len(data['weights'])))
+        data['bins'] = data['items']
+        data['bin_capacity'] = 480
+        return data
 
-def main():
-    data = create_data_model()
+    def main():
+        data = create_data_model()
 
-    # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+        # Create the mip solver with the SCIP backend.
+        solver = pywraplp.Solver.CreateSolver('SCIP')
 
-    if not solver:
-        return
+        if not solver:
+            return
 
-    # Variables
-    # x[i, j] = 1 if item i is packed in bin j.
-    x = {}
-    for i in data['items']:
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+        x = {}
+        for i in data['items']:
+            for j in data['bins']:
+                x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+        y = {}
         for j in data['bins']:
-            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+            y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
 
-    # y[j] = 1 if bin j is used.
-    y = {}
-    for j in data['bins']:
-        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+        # Constraints
+        # Each item must be in exactly one bin.
+        for i in data['items']:
+            solver.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-    # Constraints
-    # Each item must be in exactly one bin.
-    for i in data['items']:
-        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
-
-    # The amount packed in each bin cannot exceed its capacity.
-    for j in data['bins']:
-        solver.Add(
-            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
-            data['bin_capacity'])
-
-    # Objective: minimize the number of bins used.
-    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
-
-    status = solver.Solve()
-
-    if status == pywraplp.Solver.OPTIMAL:
-        num_bins = 0
+        # The amount packed in each bin cannot exceed its capacity.
         for j in data['bins']:
-            if y[j].solution_value() == 1:
-                bin_items = []
-                bin_weight = 0
-                for i in data['items']:
-                    if x[i, j].solution_value() > 0:
-                        bin_items.append(i)
-                        bin_weight += data['weights'][i]
-                if bin_items:
-                    num_bins += 1
-                    print('Stick number', j)
-                    print('  Items nested:', dfAngleNest.loc[bin_items,'PART NUMBER'])
-                    print('  Total length:', bin_weight)
-                    print()
-        print()
-        print('Number of sticks used:', num_bins)
-        print('Time = ', solver.WallTime(), ' milliseconds')
-    else:
-        print('The problem does not have an optimal solution.')
+            solver.Add(
+                sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+                data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+        solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL:
+            num_bins = 0
+            for j in data['bins']:
+                if y[j].solution_value() == 1:
+                    bin_items = []
+                    bin_weight = 0
+                    for i in data['items']:
+                        if x[i, j].solution_value() > 0:
+                            bin_items.append(i)
+                            bin_weight += data['weights'][i]
+                    if bin_items:
+                        num_bins += 1
+                        print('Stick number', j)
+                        print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,1], '\n', dfAngleType.iloc[bin_items,2])
+                        print('  Total length:', bin_weight)
+                        print()
+            print()
+            print('Number of sticks used:', num_bins)
+            print('Time = ', solver.WallTime(), ' milliseconds')
+        else:
+            print('The problem does not have an optimal solution.')
 
 
-if __name__ == '__main__':
-    main()
+    if __name__ == '__main__':
+        main()
 
 
 #####Flat Bar order#####
@@ -249,35 +251,6 @@ dfNutsAndBoltsVerif['USE'] = "Samples"
 #save to new excel file
 dfNutsAndBoltsVerif.to_excel(output_directory + "//" + projectName + " Verification Hardware Order.xlsx", sheet_name="Sheet 1")
 
-# OLD shop bolts
-#filter for shop bolts and field bolts. filter is whether sheet name contains an E
-#dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
-#dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
-#get a sum of bolts by type and station
-#dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#add 8% or +5 to shop bolts, whichever is more
-#dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
-#round up
-#dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
-#save to separate excel file
-#dfShopBolts.to_excel(output_directory + "//DEBUGShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
-#add sheet name to station name column'
-#dfShopBoltsCheck = dfShopBolts.copy(deep=True)
-#dfShopBoltsOrder = dfShopBolts.copy(deep=True)
-#dfShopBoltsOrder['STRUCTURES'] = dfShopBoltsOrder['DRAWING'] + ' | ' + dfShopBoltsOrder['STRUCTURES']
-#delete sheet name column
-#dfShopBoltsOrder = dfShopBoltsOrder.drop('DRAWING', axis=1)
-#delete qty column
-#dfShopBoltsOrder = dfShopBoltsOrder.drop('QTY', axis=1)
-#pivot data to match nuts and bolts order form
-#dfShopBoltsOrder['GRADE'] = dfShopBoltsOrder['GRADE'].fillna("N/A")
-#dfShopBoltsOrder = pd.pivot_table(dfShopBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#add total qty column adding together each bolt/nut/washer type
-#dfShopBoltsOrder['TOTAL QTY'] = dfShopBoltsOrder.sum(axis=1)
-#add column labeling all as "ASSY" so bolt order gets marked correctly
-#dfShopBoltsOrder['USE'] = "ASSY"
-#save to excel file
-#dfShopBoltsOrder.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 #NEW shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
@@ -365,34 +338,6 @@ dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
         .reset_index(drop=True))
 dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
-# #column assy bolts
-# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-# dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
-# #add 8% or +5 to shop bolts, whichever is more
-# dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
-# #round up
-# dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
-# #get a sum of bolts by type and station
-# dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-# #save to new excel file
-# dfColAssyBolts.to_excel(output_directory + "//DEBUGColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
-# #add e-sheet name to station name column
-# dfColAssyBoltsCheck = dfColAssyBolts.copy(deep=True)
-# dfColAssyBoltsOrder = dfColAssyBolts.copy(deep=True)
-# dfColAssyBoltsOrder['STRUCTURES'] = dfColAssyBoltsOrder['DRAWING'] + ' | ' + dfColAssyBoltsOrder['STRUCTURES']
-# #delete e-sheet name column
-# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('DRAWING', axis=1)
-# #delete qty column
-# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('QTY', axis=1)
-# #pivot data to match nuts and bolts order form
-# dfColAssyBoltsOrder['GRADE'] = dfColAssyBoltsOrder['GRADE'].fillna("N/A")
-# dfColAssyBoltsOrder = pd.pivot_table(dfColAssyBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-# #add total qty column adding together each bolt/nut/washer type
-# dfColAssyBoltsOrder['TOTAL QTY'] = dfColAssyBoltsOrder.sum(axis=1)
-# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-# dfColAssyBoltsOrder['USE'] = "COLUMN ASSY"
-# #save to excel file
-# dfColAssyBoltsOrder.to_excel(output_directory + "//Column Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 #NEW field bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
@@ -436,49 +381,6 @@ dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
         .reset_index(drop=True))
 dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 
-# #field bolts
-# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-# dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
-# #add 2 to each bolt count
-# dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
-# #get a sum of bolts by type and station
-# dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-# #save to new excel file
-# dfFieldBolts.to_excel(output_directory + "//DEBUGFieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
-# #add e-sheet name to station name column
-# dfFieldBoltsOrder = dfFieldBolts
-# dfFieldBoltsOrder['STRUCTURES'] = dfFieldBoltsOrder['DRAWING'] + ' | ' + dfFieldBoltsOrder['STRUCTURES']
-# #delete e-sheet name column
-# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('DRAWING', axis=1)
-# #delete qty column
-# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('QTY', axis=1)
-# #pivot data to match nuts and bolts order form
-# dfFieldBoltsOrder['GRADE'] = dfFieldBoltsOrder['GRADE'].fillna("N/A")
-# dfFieldBoltsOrder = pd.pivot_table(dfFieldBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-# #add total qty column adding together each bolt/nut/washer type
-# dfFieldBoltsOrder['TOTAL QTY'] = dfFieldBoltsOrder.sum(axis=1)
-# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-# dfFieldBoltsOrder['USE'] = "SHIP LOOSE"
-# #save to excel file
-# dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
-
-#function for checking old nuts and bolts orders
-#adds assy bolts and col assy bolts
-#dfNutsAndBoltsCheck = pd.concat([dfShopBoltsCheck, dfColAssyBoltsCheck])
-#delete drawing column
-#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
-#delete qty column
-#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
-#adds together quantities of similar nuts and bolts
-#dfNutsAndBoltsCheck['GRADE'] = dfNutsAndBoltsCheck['GRADE'].fillna("N/A")
-#dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#pivots info to match old nuts and bolts order form
-#dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#adds sum column to end
-#dfNutsAndBoltsCheck['TOTAL QTY'] = dfNutsAndBoltsCheck.sum(axis=1)
-#saves to new excel form
-#dfNutsAndBoltsCheck.to_excel(output_directory + "//CHECK OLD Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
-
 
 #####Misc Hardware#####
 
@@ -514,17 +416,3 @@ dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MA
 #save to new excel file
 dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
-# LARGE_FONT= ("Verdana", 12)
-# NORM_FONT = ("Helvetica", 10)
-# SMALL_FONT = ("Helvetica", 8)
-
-# def popupmsg(msg):
-#     popup = tk.Tk()
-#     popup.wm_title("!")
-#     label = tk.Label(popup, text=msg, font=NORM_FONT)
-#     label.pack(side="top", fill="x", pady=10)
-#     B1 = tk.Button(popup, text="Okay", command = popup.destroy)
-#     B1.pack()
-#     popup.mainloop()
-
-# popupmsg("Complete")
