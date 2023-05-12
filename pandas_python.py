@@ -514,17 +514,17 @@ dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MA
 #save to new excel file
 dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
-LARGE_FONT= ("Verdana", 12)
-NORM_FONT = ("Helvetica", 10)
-SMALL_FONT = ("Helvetica", 8)
+# LARGE_FONT= ("Verdana", 12)
+# NORM_FONT = ("Helvetica", 10)
+# SMALL_FONT = ("Helvetica", 8)
 
-def popupmsg(msg):
-    popup = tk.Tk()
-    popup.wm_title("!")
-    label = tk.Label(popup, text=msg, font=NORM_FONT)
-    label.pack(side="top", fill="x", pady=10)
-    B1 = tk.Button(popup, text="Okay", command = popup.destroy)
-    B1.pack()
-    popup.mainloop()
+# def popupmsg(msg):
+#     popup = tk.Tk()
+#     popup.wm_title("!")
+#     label = tk.Label(popup, text=msg, font=NORM_FONT)
+#     label.pack(side="top", fill="x", pady=10)
+#     B1 = tk.Button(popup, text="Okay", command = popup.destroy)
+#     B1.pack()
+#     popup.mainloop()
 
-popupmsg("Complete")
+# popupmsg("Complete")
