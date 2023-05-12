@@ -76,7 +76,6 @@ dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
 dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
 dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
 dfAngleNest = dfAngleNest.drop('QTY', axis=1)
-dfAngleNest = dfAngleNest.drop('DRAWING', axis=1)
 dfAngleNest = dfAngleNest.drop('REV', axis=1)
 dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
 dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
@@ -88,6 +87,9 @@ dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
+writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+AngleNestWorksetDataFrame = []
+
 for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):    
     
     def create_data_model():
@@ -97,6 +99,7 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         data['bin_capacity'] = 480
+        data['material'] = dfAngleType.iloc[0,3]
         return data
 
     def main():
@@ -149,19 +152,25 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
                     if bin_items:
                         num_bins += 1
                         print('Stick number', j)
-                        print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,1], '\n', dfAngleType.iloc[bin_items,2])
+                        print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
                         print('  Total length:', bin_weight)
+                        print('  Usage:', bin_weight/480)
                         print()
             print()
             print('Number of sticks used:', num_bins)
             print('Time = ', solver.WallTime(), ' milliseconds')
+            NestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
+            NestDictionaryDataFrame = pd.DataFrame(data=NestDictionary, index=[0])
+            AngleNestWorksetDataFrame.append(NestDictionaryDataFrame)
         else:
             print('The problem does not have an optimal solution.')
 
-
     if __name__ == '__main__':
         main()
-
+AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
+print(AnglePostNestDataFrame)
+AnglePostNestDataFrame.to_excel(writer)
+writer.close()
 
 #####Flat Bar order#####
 
