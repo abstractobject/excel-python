@@ -69,6 +69,7 @@ dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
 #dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
 
+#prepping data for angle nesting
 dfAngleNest = dfAngle.copy(deep=True)
 dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
@@ -87,9 +88,11 @@ dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
+#prepping excel sheet for angle order after nesting
 writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
 AngleNestWorksetDataFrame = []
 
+#angle nesting fuction
 for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):    
     
     def create_data_model():
@@ -151,22 +154,24 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
                             bin_weight += data['weights'][i]
                     if bin_items:
                         num_bins += 1
-                        print('Stick number', j)
-                        print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
-                        print('  Total length:', bin_weight)
-                        print('  Usage:', bin_weight/480)
-                        print()
-            print()
-            print('Number of sticks used:', num_bins)
-            print('Time = ', solver.WallTime(), ' milliseconds')
-            NestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
-            NestDictionaryDataFrame = pd.DataFrame(data=NestDictionary, index=[0])
-            AngleNestWorksetDataFrame.append(NestDictionaryDataFrame)
+                        #print('Stick number', j)
+                        #print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
+                        #print('  Total length:', bin_weight)
+                        #print('  Usage:', bin_weight/480)
+                        #print()
+            #print()
+            #print('Number of sticks used:', num_bins)
+            #print('Time = ', solver.WallTime(), ' milliseconds')
+            AngleNestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
+            AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
+            AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
         else:
             print('The problem does not have an optimal solution.')
 
     if __name__ == '__main__':
         main()
+        
+#saving angle nesting results        
 AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
 print(AnglePostNestDataFrame)
 AnglePostNestDataFrame.to_excel(writer)
@@ -179,13 +184,15 @@ dfFlatBar = df[df['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False
 #sort by column MATERIAL DESCRIPTION
 dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
 #round up flat bar over half a stock length to a whole stock piece
-dfFlatBar.loc[dfFlatBar['LENGTH.1'] >120, 'LENGTH.1'] = 240
+dfFlatBarRound = dfFlatBar.copy(deep=True)
+dfFlatBarRound.loc[dfFlatBarRound['LENGTH.1'] >120, 'LENGTH.1'] = 240
 #column sum = (total qty) x (length in inches)
-dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfFlatBarSum = dfFlatBarRound
+dfFlatBarSum['SUM'] = dfFlatBarSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 #dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
-dfFlatBarGroup= dfFlatBar.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+dfFlatBarGroup= dfFlatBarSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
 #dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
