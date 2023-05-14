@@ -323,6 +323,12 @@ print(FlatBarPostNestDataFrame)
 FlatBarPostNestDataFrame.to_excel(writer)
 writer.close()
 
+#combined anglematic nested order
+dfAnglematicNestedInput = [AnglePostNestDataFrame,FlatBarPostNestDataFrame[1:]]
+dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
+dfAnglematicNested['HEAT #'] = None
+dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+
 #Combined Anglematic Order#
 
 dfAnglematicInput = [dfAngleGroup,dfFlatBarGroup[1:]]
