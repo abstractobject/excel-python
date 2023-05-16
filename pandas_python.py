@@ -235,102 +235,106 @@ dfFlatBarNest = dfFlatBarNest.drop('WIDTH', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
+dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*10000)
 dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
 
-# #prepping excel sheet for flat bar order after nesting
-# writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
-# FlatBarNestWorksetDataFrame = []
+#prepping excel sheet for FlatBar order after nesting
+writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
+FlatBarNestWorksetDataFrame = []
+text_file = open("FlatBarNestingDebugOutput.txt", "w")
 
-# #flat bar nesting fuction
-# for group, dfFlatBarType in dfFlatBarNest.groupby('MATERIAL DESCRIPTION'):    
-    
-#     def create_data_model():
-#         data = {}
-#         data['weights'] = dfFlatBarType['LENGTH.1'].values.tolist()
-#         #data['items'] = dfFlatBarType['PART NUMBER'].values.tolist()
-#         data['items'] = list(range(len(data['weights'])))
-#         data['bins'] = data['items']
-#         data['bin_capacity'] = 240
-#         data['material'] = dfFlatBarType.iloc[0,3]
-#         return data
+def create_data_model_FlatBar():
+      data = {}
+      data['weights'] = dfFlatBarType['LENGTH.1'].values.tolist()
+      #data['items'] = dfFlatBarNest['PART NUMBER'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 2400000
+      data['material'] = dfFlatBarType.iloc[0,3]
+      return data
 
-#     def main():
-#         data = create_data_model()
+#FlatBar nesting fuction
+for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTURES']):    
 
-#         # Create the mip solver with the SCIP backend.
-#         solver = pywraplp.Solver.CreateSolver('SCIP')
+    data = create_data_model_FlatBar()
 
-#         if not solver:
-#             return
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('SCIP')
+    #solver.set_time_limit = 60000
+    #if not solver:
+    #    return
 
-#         # Variables
-#         # x[i, j] = 1 if item i is packed in bin j.
-#         x = {}
-#         for i in data['items']:
-#             for j in data['bins']:
-#                 x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
 
-#         # y[j] = 1 if bin j is used.
-#         y = {}
-#         for j in data['bins']:
-#             y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
 
-#         # Constraints
-#         # Each item must be in exactly one bin.
-#         for i in data['items']:
-#             solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-#         # The amount packed in each bin cannot exceed its capacity.
-#         for j in data['bins']:
-#             solver.Add(
-#                 sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
-#                 data['bin_capacity'])
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
 
-#         # Objective: minimize the number of bins used.
-#         solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
 
-#         status = solver.Solve()
+    status = solver.Solve()
 
-#         if status == pywraplp.Solver.OPTIMAL:
-#             num_bins = 0
-#             for j in data['bins']:
-#                 if y[j].solution_value() == 1:
-#                     bin_items = []
-#                     bin_weight = 0
-#                     for i in data['items']:
-#                         if x[i, j].solution_value() > 0:
-#                             bin_items.append(i)
-#                             bin_weight += data['weights'][i]
-#                     if bin_items:
-#                         num_bins += 1
-#                         #print('Stick number', j)
-#                         #print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
-#                         #print('  Total length:', bin_weight)
-#                         #print('  Usage:', bin_weight/480)
-#                         #print()
-#             #print()
-#             #print('Number of sticks used:', num_bins)
-#             #print('Time = ', solver.WallTime(), ' milliseconds')
-#             FlatBarNestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
-#             FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
-#             FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
-#         else:
-#             print('The problem does not have an optimal solution.')
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                if bin_items:
+                    num_bins += 1
+                    #text_file.write('Stick number', j)
+                    #text_file.write('  Items nested:', '\n',  dfFlatBarType.iloc[bin_items,2], '\n', dfFlatBarType.iloc[bin_items,3])
+                    #text_file.write('  Total length:', bin_weight)
+                    #text_file.write('  Usage:', bin_weight/480)
+                    #print()
+        #text_file.write(dfFlatBarType.iloc[bin_items,3])
+        #text_file.write('Number of sticks used:', num_bins)
+        #text_file.write('Time = ', solver.WallTime(), ' milliseconds')
+        FlatBarNestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
+        FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
+        FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal solution.')
 
-#     if __name__ == '__main__':
-#         main()
+ #   if __name__ == '__main__':
+ #       main()
         
-# #saving flat bar nesting results        
-# FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
-# print(FlatBarPostNestDataFrame)
-# FlatBarPostNestDataFrame.to_excel(writer)
-# writer.close()
+#saving FlatBar nesting results   
+text_file.close()     
+FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
+FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+print(FlatBarPostNestDataFrameSUM)
+FlatBarPostNestDataFrameSUM.to_excel(writer)
+writer.close()
 
 #combined anglematic nested order
-# dfAnglematicNestedInput = [AnglePostNestDataFrame,FlatBarPostNestDataFrame]
-# dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
-# dfAnglematicNested['HEAT #'] = None
-# dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+dfAnglematicNestedInput = [AnglePostNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
+dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
+dfAnglematicNested['HEAT #'] = None
+dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 #Combined Anglematic Order#
 
