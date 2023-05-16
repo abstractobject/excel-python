@@ -104,13 +104,13 @@ def create_data_model_angle():
       return data
 
 #angle nesting fuction
-for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):    
+for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTURES']):    
 
     data = create_data_model_angle()
 
         # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('CP_SAT')
-
+    solver = pywraplp.Solver.CreateSolver('SCIP')
+    #solver.set_time_limit = 60000
     #if not solver:
     #    return
 
@@ -159,9 +159,9 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
                     #print('  Total length:', bin_weight)
                     #print('  Usage:', bin_weight/480)
                     #print()
-        print(dfAngleType.iloc[bin_items,3])
-        print('Number of sticks used:', num_bins)
-        print('Time = ', solver.WallTime(), ' milliseconds')
+        #print(dfAngleType.iloc[bin_items,3])
+        #print('Number of sticks used:', num_bins)
+        #print('Time = ', solver.WallTime(), ' milliseconds')
         AngleNestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
         AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
@@ -174,8 +174,9 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
         
 #saving angle nesting results        
 AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-print(AnglePostNestDataFrame)
-AnglePostNestDataFrame.to_excel(writer)
+AnglePostNestDataFrameSUM= AnglePostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+print(AnglePostNestDataFrameSUM)
+AnglePostNestDataFrameSUM.to_excel(writer)
 writer.close()
 
 #####Flat Bar order#####
