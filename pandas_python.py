@@ -142,7 +142,7 @@ for group, dfAngleType in dfAngleNest.groupby('MATERIAL DESCRIPTION'):
 
     status = solver.Solve()
 
-    if status == pywraplp.Solver.OPTIMAL:
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
         num_bins = 0
         for j in data['bins']:
             if y[j].solution_value() == 1:
