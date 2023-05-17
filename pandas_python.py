@@ -144,6 +144,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
 
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
         num_bins = 0
+        bin_usage = 0
         for j in data['bins']:
             if y[j].solution_value() == 1:
                 bin_items = []
@@ -154,6 +155,12 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
                         bin_weight += data['weights'][i]
                 if bin_items:
                     num_bins += 1
+                    if bin_weight/4800000 < 0.85 and bin_weight/4800000 > 0.25:
+                        bin_usage += bin_weight/4800000
+                    elif bin_weight/4800000 > 0.85:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
                     #print('Stick number', j)
                     #print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
                     #print('  Total length:', bin_weight)
