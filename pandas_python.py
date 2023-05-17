@@ -301,6 +301,7 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
 
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
         num_bins = 0
+        bin_usage = 0
         for j in data['bins']:
             if y[j].solution_value() == 1:
                 bin_items = []
@@ -311,6 +312,12 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
                         bin_weight += data['weights'][i]
                 if bin_items:
                     num_bins += 1
+                    if bin_weight/4800000 < 0.85 and bin_weight/4800000 > 0.25:
+                        bin_usage += bin_weight/4800000
+                    elif bin_weight/4800000 > 0.85:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
                     #text_file.write('Stick number', j)
                     #text_file.write('  Items nested:', '\n',  dfFlatBarType.iloc[bin_items,2], '\n', dfFlatBarType.iloc[bin_items,3])
                     #text_file.write('  Total length:', bin_weight)
