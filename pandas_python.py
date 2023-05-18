@@ -156,7 +156,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
                 if bin_items:
                     num_bins += 1
                     if bin_weight/4800000 < 0.85 and bin_weight/4800000 > 0.25:
-                        bin_usage += bin_weight/4800000
+                        bin_usage += round(bin_weight/4800000, 2)
                     elif bin_weight/4800000 > 0.85:
                         bin_usage += 1
                     else:
@@ -174,7 +174,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
         solver.Clear()
     else:
-          print('The problem does not have an optimal solution.')
+          print('The problem does not have an optimal or feasible solution.')
 
  #   if __name__ == '__main__':
  #       main()
@@ -312,9 +312,9 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
                         bin_weight += data['weights'][i]
                 if bin_items:
                     num_bins += 1
-                    if bin_weight/4800000 < 0.85 and bin_weight/4800000 > 0.25:
-                        bin_usage += bin_weight/4800000
-                    elif bin_weight/4800000 > 0.85:
+                    if bin_weight/2400000 < 0.85 and bin_weight/2400000 > 0.25:
+                        bin_usage += round(bin_weight/2400000, 2)
+                    elif bin_weight/2400000 > 0.85:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
@@ -331,7 +331,7 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
         FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
         solver.Clear()
     else:
-          print('The problem does not have an optimal solution.')
+          print('The problem does not have an optimal or feasible solution.')
 
  #   if __name__ == '__main__':
  #       main()
