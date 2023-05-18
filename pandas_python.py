@@ -109,7 +109,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
     data = create_data_model_angle()
 
         # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
     #solver.set_time_limit = 60000
     #if not solver:
     #    return
