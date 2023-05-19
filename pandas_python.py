@@ -87,6 +87,7 @@ dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
 dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
 dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*10000)
+dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for angle order after nesting
@@ -110,7 +111,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
 
         # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    #solver.set_time_limit = 60000
+    solver.set_time_limit = 60000
     #if not solver:
     #    return
 
@@ -243,6 +244,7 @@ dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
 dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*10000)
+dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
 dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for FlatBar order after nesting
