@@ -78,9 +78,9 @@ dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
 dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
 dfAngleNest = dfAngleNest.drop('QTY', axis=1)
 dfAngleNest = dfAngleNest.drop('REV', axis=1)
-dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
+#dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
 dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
-dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
+#dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
 dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
 dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
 dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
@@ -101,20 +101,20 @@ def create_data_model_angle():
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
       data['bin_capacity'] = 4800000
-      data['material'] = dfAngleType.iloc[0,3]
+      #data['material'] = dfAngleType.iloc[0,3]
       return data
 
 #angle nesting fuction
 for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTURES']):    
+    
+    angleMaterial = dfAngleType.iloc[0,5]
 
     data = create_data_model_angle()
 
         # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
     solver.set_time_limit = 60000
-    #if not solver:
-    #    return
-
+   
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
     x = {}
@@ -177,8 +177,6 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
     else:
           print('The problem does not have an optimal or feasible solution.')
 
- #   if __name__ == '__main__':
- #       main()
         
 #saving angle nesting results        
 AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
@@ -259,19 +257,20 @@ def create_data_model_FlatBar():
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
       data['bin_capacity'] = 2400000
-      data['material'] = dfFlatBarType.iloc[0,3]
+      #data['material'] = dfFlatBarType.iloc[0,3]
       return data
 
 #FlatBar nesting fuction
 for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTURES']):    
+
+    flatBarMaterial = dfFlatBarType.iloc[0,3]
 
     data = create_data_model_FlatBar()
 
         # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('SCIP')
     #solver.set_time_limit = 60000
-    #if not solver:
-    #    return
+   
 
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
@@ -335,8 +334,6 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
     else:
           print('The problem does not have an optimal or feasible solution.')
 
- #   if __name__ == '__main__':
- #       main()
         
 #saving FlatBar nesting results   
 text_file.close()     
