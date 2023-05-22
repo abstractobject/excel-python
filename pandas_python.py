@@ -76,9 +76,9 @@ dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip(
 dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
 dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
 dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
-dfAngleNest = dfAngleNest.drop('QTY', axis=1)
+dfAngleNest['QTY'] = 1
 dfAngleNest = dfAngleNest.drop('REV', axis=1)
-#dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
+dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
 dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
 #dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
 dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
@@ -91,21 +91,23 @@ dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for angle order after nesting
-writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+
+AngleCutTicketWorksetDataFrame = []
 AngleNestWorksetDataFrame = []
 
 def create_data_model_angle():
       data = {}
       data['weights'] = dfAngleType['LENGTH.1'].values.tolist()
-      #data['items'] = dfAngleNest['PART NUMBER'].values.tolist()
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
       data['bin_capacity'] = 4800000
-      #data['material'] = dfAngleType.iloc[0,3]
+      data['material'] = dfAngleType.iloc[0,5]
+      data['structures'] = dfAngleType.iloc[0,8]
+      data['drawing'] = dfAngleType.iloc[0,2]
       return data
 
 #angle nesting fuction
-for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTURES']):    
+for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
     
     angleMaterial = dfAngleType.iloc[0,5]
 
@@ -113,7 +115,7 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
 
         # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    solver.set_time_limit = 60000
+    #solver.set_time_limit = 60000
    
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
@@ -156,33 +158,52 @@ for group, dfAngleType in dfAngleNest.groupby(['MATERIAL DESCRIPTION', 'STRUCTUR
                         bin_weight += data['weights'][i]
                 if bin_items:
                     num_bins += 1
-                    if bin_weight/4800000 < 0.85 and bin_weight/4800000 > 0.25:
+                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
                         bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight/4800000 > 0.85:
+                    elif bin_weight/4800000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-                    #print('Stick number', j)
-                    #print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
-                    #print('  Total length:', bin_weight)
-                    #print('  Usage:', bin_weight/480)
-                    #print()
+                    # print('Stick number', j)
+                    # print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
+                    # print('  Total length:', bin_weight/4800000)
+                    # print('  Usage:', bin_usage)
+                    # print()
         #print(dfAngleType.iloc[bin_items,3])
         #print('Number of sticks used:', num_bins)
         #print('Time = ', solver.WallTime(), ' milliseconds')
-        AngleNestDictionary = {'PROJECT': projectName, 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins}
+        AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
         AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
+        dfAngleTypeSum = dfAngleType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
+        dfAngleTypeSum['ORDER'] = num_bins
+        dfAngleTypeSum['USAGE'] = bin_usage
+        AngleCutTicketWorksetDataFrame.append(dfAngleTypeSum)
         solver.Clear()
     else:
           print('The problem does not have an optimal or feasible solution.')
 
         
 #saving angle nesting results        
-AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-AnglePostNestDataFrameSUM= AnglePostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-print(AnglePostNestDataFrameSUM)
-AnglePostNestDataFrameSUM.to_excel(writer)
+AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
+AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
+
+writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGCutTicket.xlsx")
+for group, dfCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+    dfCutTicket = dfCutTicket.sort_values(by='ITEM')
+    dfCutTicket = dfCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+    dfCutTicket.to_excel(writerCutTicket, sheet_name=dfCutTicket.iloc[0,1] + " | " + dfCutTicket.iloc[0,6])
+
+writerCutTicket.close()
+
+writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
+AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
+AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
+AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+#print(AnglePostNestDCutTicketSUM)
+AnglePoseNestDataFrameSUM.to_excel(writer)
 writer.close()
 
 #####Flat Bar order#####
@@ -235,7 +256,7 @@ dfFlatBarNest = dfFlatBarNest.drop('QTY', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('REV', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('SHEET', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('MAIN NUMBER', axis=1)
-dfFlatBarNest = dfFlatBarNest.drop('ITEM', axis=1)
+#dfFlatBarNest = dfFlatBarNest.drop('ITEM', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('PART DESCRIPTION', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WIDTH', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
@@ -257,7 +278,7 @@ def create_data_model_FlatBar():
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
       data['bin_capacity'] = 2400000
-      #data['material'] = dfFlatBarType.iloc[0,3]
+      data['material'] = dfFlatBarType.iloc[0,4]
       return data
 
 #FlatBar nesting fuction
@@ -268,7 +289,7 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
     data = create_data_model_FlatBar()
 
         # Create the mip solver with the SCIP backend.
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
     #solver.set_time_limit = 60000
    
 
@@ -319,11 +340,11 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-                    #text_file.write('Stick number', j)
-                    #text_file.write('  Items nested:', '\n',  dfFlatBarType.iloc[bin_items,2], '\n', dfFlatBarType.iloc[bin_items,3])
-                    #text_file.write('  Total length:', bin_weight)
-                    #text_file.write('  Usage:', bin_weight/480)
-                    #print()
+                #     print('Stick number', j)
+                #     print('  Items nested:', '\n',  dfFlatBarType.iloc[bin_items,2], '\n', dfFlatBarType.iloc[bin_items,3])
+                #     print('  Total length:', bin_weight/10000)
+                #     print('  Usage:', bin_usage)
+                #     print()
         #text_file.write(dfFlatBarType.iloc[bin_items,3])
         #text_file.write('Number of sticks used:', num_bins)
         #text_file.write('Time = ', solver.WallTime(), ' milliseconds')
@@ -339,12 +360,12 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['MATERIAL DESCRIPTION', 'STRU
 text_file.close()     
 FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
 FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-print(FlatBarPostNestDataFrameSUM)
+#print(FlatBarPostNestDataFrameSUM)
 FlatBarPostNestDataFrameSUM.to_excel(writer)
 writer.close()
 
 #combined anglematic nested order
-dfAnglematicNestedInput = [AnglePostNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
+dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
 dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
 dfAnglematicNested['HEAT #'] = None
 dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
