@@ -1,6 +1,7 @@
 import pandas as pd
 import tkinter as tk
 import numpy as np
+import re
 from tkinter import filedialog
 from ortools.linear_solver import pywraplp
 
@@ -192,7 +193,10 @@ writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUG
 for group, dfCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
     dfCutTicket = dfCutTicket.sort_values(by='ITEM')
     dfCutTicket = dfCutTicket.sort_values(by='MATERIAL DESCRIPTION')
-    dfCutTicket.to_excel(writerCutTicket, sheet_name=dfCutTicket.iloc[0,1] + " | " + dfCutTicket.iloc[0,6])
+    dfCutTicket['SIZE'] = "40'"
+    dfCutTicket['INVENTORY ID'] = None
+    dfCutTicket = dfCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+    dfCutTicket.to_excel(writerCutTicket, sheet_name=dfCutTicket.iloc[0,1] + " | " + dfCutTicket.iloc[0,10])
 
 writerCutTicket.close()
 
