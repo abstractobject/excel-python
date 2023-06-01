@@ -409,6 +409,140 @@ dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 dfMisc.to_excel(output_directory + "//" + projectName + " Misc Material.xlsx", sheet_name="Sheet 1")
 
+#prepping data for sign bracket nesting
+dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
+dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip())
+dfSignBracketNest = dfSignBracketNest.drop('ASSY', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
+dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
+dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
+dfSignBracketNest['QTY'] = 1
+dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
+
+#prepping excel sheet for FlatBar order after nesting
+SignBracketCutTicketWorksetDataFrame = []
+SignBracketNestWorksetDataFrame = []
+
+def create_data_model_sign_bracket():
+      data = {}
+      data['weights'] = dfSignBracketType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 4800000
+      data['material'] = dfSignBracketType.iloc[0,5]
+      data['structures'] = dfSignBracketType.iloc[0,8]
+      data['drawing'] = dfSignBracketType.iloc[0,2]
+      return data
+
+#angle nesting fuction
+for group, dfSignBracketType in dfSignBracketNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION']):    
+    
+    #angleMaterial = dfAngleType.iloc[0,5]
+
+    data = create_data_model_sign_bracket()
+
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+    #solver.set_time_limit = 60000
+   
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                if bin_items:
+                    num_bins += 1
+                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                        bin_usage += round(bin_weight/4800000, 2)
+                    elif bin_weight/4800000 > 0.75:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+                    # print('Stick number', j)
+                    # print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
+                    # print('  Total length:', bin_weight/4800000)
+                    # print('  Usage:', bin_usage)
+                    # print()
+        #print(dfAngleType.iloc[bin_items,3])
+        #print('Number of sticks used:', num_bins)
+        #print('Time = ', solver.WallTime(), ' milliseconds')
+        SignBracketNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+        SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
+        SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
+        dfSignBracketTypeSum = dfSignBracketType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
+        dfSignBracketTypeSum['ORDER'] = num_bins
+        dfSignBracketTypeSum['USAGE'] = bin_usage
+        SignBracketCutTicketWorksetDataFrame.append(dfSignBracketTypeSum)
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal or feasible solution.')
+
+        
+#saving angle nesting results        
+SignBracketCutTicketDataFrame = pd.concat(SignBracketCutTicketWorksetDataFrame, ignore_index=True)
+SignBracketCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGSignBracketCutTicket.xlsx", sheet_name="Sheet 1")
+
+# writerSignBracketCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Sign Bracket Cut Ticket Data.xlsx")
+
+# for group, dfSignBracketCutTicket in SignBracketCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+#     dfSignBracketCutTicket = dfSignBracketCutTicket.sort_values(by='ITEM')
+#     dfSignBracketCutTicket = dfSignBracketCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+#     dfSignBracketCutTicket['SIZE'] = "40'"
+#     dfSignBracketCutTicket['INVENTORY ID'] = None
+#     dfSignBracketCutTicket = dfSignBracketCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+#     dfSignBracketCutTicket.to_excel(writerSignBracketCutTicket, sheet_name=dfSignBracketCutTicket.iloc[0,1] + " | " + dfSignBracketCutTicket.iloc[0,10])
+
+
+SignBracketWriter = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestSignBracket.xlsx")
+SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
+SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
+SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.drop('STRUCTURES', axis=1)
+SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.drop('DRAWING', axis=1)
+SignBracketPoseNestDataFrameSUM = SignBracketPoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+SignBracketPoseNestDataFrameSUM.to_excel(SignBracketWriter)
+SignBracketWriter.close()
+
 #####NUTS AND BOLTS#####
 
 #filter out everyhing but nuts, bolts, and washers only
