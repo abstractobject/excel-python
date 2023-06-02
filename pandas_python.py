@@ -443,7 +443,7 @@ def create_data_model_sign_bracket():
       return data
 
 #angle nesting fuction
-for group, dfSignBracketType in dfSignBracketNest.groupby(['MATERIAL DESCRIPTION']):    
+for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
     
     
     data = create_data_model_sign_bracket()
@@ -586,9 +586,11 @@ dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
 dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
 # For each grouping Apply insert headers
 dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfShopBolts3))
+        .apply(lambda d: pd.concat([d, dfShopBolts3]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfShopBolts4 = pd.concat([dfShopBolts4, dfShopBolts2.tail(1)], ignore_index=True)
 dfShopBolts4.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -629,9 +631,11 @@ dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
 # For each grouping Apply insert headers
 dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfColAssyBolts2))
+        .apply(lambda d: pd.concat([d, dfColAssyBolts2]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfColAssyBolts3 = pd.concat([dfColAssyBolts3, dfColAssyBolts.tail(1)], ignore_index=True)
 dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -672,9 +676,11 @@ dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
 dfFieldBolts2 = pd.DataFrame([[''] * len(dfFieldBolts.columns)], columns=dfFieldBolts.columns)
 # For each grouping Apply insert headers
 dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfFieldBolts2))
+        .apply(lambda d: pd.concat([d,dfFieldBolts2]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfFieldBolts3 = pd.concat([dfFieldBolts3, dfFieldBolts.tail(1)], ignore_index=True)
 dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
