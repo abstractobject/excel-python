@@ -165,14 +165,7 @@ for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION'
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-                    # print('Stick number', j)
-                    # print('  Items nested:', '\n',  dfAngleType.iloc[bin_items,2], '\n', dfAngleType.iloc[bin_items,3])
-                    # print('  Total length:', bin_weight/4800000)
-                    # print('  Usage:', bin_usage)
-                    # print()
-        #print(dfAngleType.iloc[bin_items,3])
-        #print('Number of sticks used:', num_bins)
-        #print('Time = ', solver.WallTime(), ' milliseconds')
+                    
         AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
         AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
@@ -344,14 +337,7 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-                #     print('Stick number', j)
-                #     print('  Items nested:', '\n',  dfFlatBarType.iloc[bin_items,2], '\n', dfFlatBarType.iloc[bin_items,3])
-                #     print('  Total length:', bin_weight/10000)
-                #     print('  Usage:', bin_usage)
-                #     print()
-        #text_file.write(dfFlatBarType.iloc[bin_items,3])
-        #text_file.write('Number of sticks used:', num_bins)
-        #text_file.write('Time = ', solver.WallTime(), ' milliseconds')
+        
         FlatBarNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
         FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
         FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
@@ -723,23 +709,6 @@ dfClampPl = dfClampPl.drop('GRADE', axis=1)
 #dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
 #save to new excel file
 dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
-
-# dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
-# dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
-# dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-# dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip())
-# dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
-# dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
-# dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
-# dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
-# dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
-# dfSignBracketNest['QTY'] = 1
-# dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
-# dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
-# dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
-# dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
-# dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
-# dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUGSignBracketPRE.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for FlatBar order after nesting
 ClampPlatetCutTicketWorksetDataFrame = []
