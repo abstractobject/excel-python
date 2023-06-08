@@ -477,7 +477,7 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
                     if x[i, j].solution_value() > 0:
                         bin_items.append(i)
                         bin_weight += data['weights'][i]
-                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': (data['weights'][i])/10000, 'QTY': 1, 'STICK': j}
+                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
                         SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
                         SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
                 if bin_items:
@@ -494,8 +494,14 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
 
 
 SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
-SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
 SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+SignBracketPoseNestDataFrame['STOCK CODE'] = None
+SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
+SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
+SignBracketPoseNestDataFrame['LOCATION'] = None
+SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
 SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
