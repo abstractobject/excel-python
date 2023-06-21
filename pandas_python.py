@@ -492,17 +492,17 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
     else:
           print('The problem does not have an optimal or feasible solution.')
 
-
-SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
-SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
-SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
-SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
-SignBracketPoseNestDataFrame['STOCK CODE'] = None
-SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
-SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
-SignBracketPoseNestDataFrame['LOCATION'] = None
-SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
-SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
+if SignBracketNestWorksetDataFrame:
+    SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
+    SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    SignBracketPoseNestDataFrame['STOCK CODE'] = None
+    SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
+    SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
+    SignBracketPoseNestDataFrame['LOCATION'] = None
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
+    SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
@@ -686,35 +686,36 @@ dfRemain.to_excel(output_directory + "//" + projectName + " Misc Hardware.xlsx",
 
 #filter out everything but clamp plates
 dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
-dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
-dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip())
-dfClampPl = dfClampPl.loc[dfClampPl.index.repeat(dfClampPl['QTY'])].reset_index(drop=True)
-dfClampPl['QTY'] = 1
-dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*10000)
-dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
-#sory be part number column
-dfClampPl = dfClampPl.sort_values('PART NUMBER')
-#delete unnecessary columns
-#dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
-dfClampPl = dfClampPl.drop('REV', axis=1)
-#dfClampPl = dfClampPl.drop('ITEM', axis=1)
-dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
-dfClampPl = dfClampPl.drop('SHEET', axis=1)
-#dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
-dfClampPl = dfClampPl.drop('WIDTH', axis=1)
-dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
-#dfClampPl = dfClampPl.drop('DRAWING', axis=1)
-#dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
-#dfClampPl = dfClampPl.drop('QTY', axis=1)
-dfClampPl = dfClampPl.drop('ASSY.', axis=1)
-dfClampPl = dfClampPl.drop('TOTAL', axis=1)
-#dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
-dfClampPl = dfClampPl.drop('GRADE', axis=1)
-#add together clamp plates of the same name
-#dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
-#save to new excel file
-dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
+if dfClampPl.empty == False:
+    dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip())
+    dfClampPl = dfClampPl.loc[dfClampPl.index.repeat(dfClampPl['QTY'])].reset_index(drop=True)
+    dfClampPl['QTY'] = 1
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*10000)
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+    #sory be part number column
+    dfClampPl = dfClampPl.sort_values('PART NUMBER')
+    #delete unnecessary columns
+    #dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
+    dfClampPl = dfClampPl.drop('REV', axis=1)
+    #dfClampPl = dfClampPl.drop('ITEM', axis=1)
+    dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
+    dfClampPl = dfClampPl.drop('SHEET', axis=1)
+    #dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
+    dfClampPl = dfClampPl.drop('WIDTH', axis=1)
+    dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
+    #dfClampPl = dfClampPl.drop('DRAWING', axis=1)
+    #dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
+    #dfClampPl = dfClampPl.drop('QTY', axis=1)
+    dfClampPl = dfClampPl.drop('ASSY.', axis=1)
+    dfClampPl = dfClampPl.drop('TOTAL', axis=1)
+    #dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
+    dfClampPl = dfClampPl.drop('GRADE', axis=1)
+    #add together clamp plates of the same name
+    #dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
+    #save to new excel file
+    dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for FlatBar order after nesting
 ClampPlatetCutTicketWorksetDataFrame = []
@@ -794,7 +795,8 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
     else:
           print('The problem does not have an optimal or feasible solution.')
 
-ClampPlatePoseNestDataFrame = pd.concat(ClampPlateNestWorksetDataFrame, ignore_index=True)
-ClampPlatePoseNestDataFrame = ClampPlatePoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
-ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
-ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestClampPlate.xlsx", sheet_name="Sheet 1")
+if ClampPlateNestWorksetDataFrame:
+    ClampPlatePoseNestDataFrame = pd.concat(ClampPlateNestWorksetDataFrame, ignore_index=True)
+    ClampPlatePoseNestDataFrame = ClampPlatePoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestClampPlate.xlsx", sheet_name="Sheet 1")
