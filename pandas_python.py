@@ -1,7 +1,9 @@
 import pandas as pd
 import tkinter as tk
 import numpy as np
+import re
 from tkinter import filedialog
+from ortools.linear_solver import pywraplp
 
 #required before we can ask for input file
 root = tk.Tk()
@@ -35,14 +37,16 @@ dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, c
 #sort by column MATERIAL DESCRIPTION
 dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
 #round up angles over half a stock length to a whole stock piece
-dfAngle.loc[dfAngle['LENGTH.1'] >240, 'LENGTH.1'] = 480
+dfAngleRound = dfAngle.copy(deep=True)
+dfAngleRound.loc[dfAngleRound['LENGTH.1'] >240, 'LENGTH.1'] = 480
 #column sum = (total qty) x (length in inches)
-dfAngle['SUM'] = dfAngle.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfAngleSum = dfAngleRound
+dfAngleSum['SUM'] = dfAngleSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 #dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 #dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
-dfAngleGroup = dfAngle.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+dfAngleGroup = dfAngleSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
 #dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfAngleGroup = dfAngleGroup.drop('REV', axis=1)
@@ -66,6 +70,138 @@ dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
 #dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
 
+#prepping data for angle nesting
+dfAngleNest = dfAngle.copy(deep=True)
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
+dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
+dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
+dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
+dfAngleNest['QTY'] = 1
+dfAngleNest = dfAngleNest.drop('REV', axis=1)
+dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
+dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
+#dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
+dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
+dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
+dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
+dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
+dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
+dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*10000)
+dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
+
+#prepping excel sheet for angle order after nesting
+
+AngleCutTicketWorksetDataFrame = []
+AngleNestWorksetDataFrame = []
+
+def create_data_model_angle():
+      data = {}
+      data['weights'] = dfAngleType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 4800000
+      data['material'] = dfAngleType.iloc[0,5]
+      data['structures'] = dfAngleType.iloc[0,8]
+      data['drawing'] = dfAngleType.iloc[0,2]
+      return data
+
+#angle nesting fuction
+for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
+    
+    #angleMaterial = dfAngleType.iloc[0,5]
+
+    data = create_data_model_angle()
+
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+    #solver.set_time_limit = 60000
+   
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                if bin_items:
+                    num_bins += 1
+                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                        bin_usage += round(bin_weight/4800000, 2)
+                    elif bin_weight/4800000 > 0.75:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+                    
+        AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+        AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
+        AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
+        dfAngleTypeSum = dfAngleType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
+        dfAngleTypeSum['ORDER'] = num_bins
+        dfAngleTypeSum['USAGE'] = bin_usage
+        AngleCutTicketWorksetDataFrame.append(dfAngleTypeSum)
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal or feasible solution.')
+
+        
+#saving angle nesting results        
+AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
+AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
+
+writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
+
+for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+    dfAngleCutTicket = dfAngleCutTicket.sort_values(by='ITEM')
+    dfAngleCutTicket = dfAngleCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+    dfAngleCutTicket['SIZE'] = "40'"
+    dfAngleCutTicket['INVENTORY ID'] = None
+    dfAngleCutTicket = dfAngleCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+    dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
+
+
+writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
+AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
+AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
+AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+#print(AnglePostNestDCutTicketSUM)
+AnglePoseNestDataFrameSUM.to_excel(writer)
+writer.close()
 
 #####Flat Bar order#####
 
@@ -74,13 +210,15 @@ dfFlatBar = df[df['PART DESCRIPTION'].str.contains("Flat*", na=False, case=False
 #sort by column MATERIAL DESCRIPTION
 dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
 #round up flat bar over half a stock length to a whole stock piece
-dfFlatBar.loc[dfFlatBar['LENGTH.1'] >120, 'LENGTH.1'] = 240
+dfFlatBarRound = dfFlatBar.copy(deep=True)
+dfFlatBarRound.loc[dfFlatBarRound['LENGTH.1'] >120, 'LENGTH.1'] = 240
 #column sum = (total qty) x (length in inches)
-dfFlatBar['SUM'] = dfFlatBar.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
+dfFlatBarSum = dfFlatBarRound
+dfFlatBarSum['SUM'] = dfFlatBarSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 #dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
-dfFlatBarGroup= dfFlatBar.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
+dfFlatBarGroup= dfFlatBarSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
 #dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
@@ -104,9 +242,144 @@ dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
 #save the final order to a different excel file
 #dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
 
+#prepping data for flat bar nesting
+dfFlatBarNest = dfFlatBar.copy(deep=True)
+dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip())
+dfFlatBarNest = dfFlatBarNest.drop('ASSY.', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('TOTAL', axis=1)
+dfFlatBarNest = dfFlatBarNest.loc[dfFlatBarNest.index.repeat(dfFlatBarNest['QTY'])].reset_index(drop=True)
+dfFlatBarNest['QTY'] = 1
+dfFlatBarNest = dfFlatBarNest.drop('REV', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('SHEET', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('MAIN NUMBER', axis=1)
+#dfFlatBarNest = dfFlatBarNest.drop('ITEM', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('PART DESCRIPTION', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('WIDTH', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
+dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
+dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*10000)
+dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
+
+#prepping excel sheet for FlatBar order after nesting
+FlatBarCutTicketWorksetDataFrame = []
+FlatBarNestWorksetDataFrame = []
+
+def create_data_model_FlatBar():
+      data = {}
+      data['weights'] = dfFlatBarType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 2400000
+      data['material'] = dfFlatBarType.iloc[0,5]
+      data['structures'] = dfFlatBarType.iloc[0,8]
+      data['drawing'] = dfFlatBarType.iloc[0,2]
+      return data
+
+#FlatBar nesting fuction
+for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
+
+    #flatBarMaterial = dfFlatBarType.iloc[0,3]
+
+    data = create_data_model_FlatBar()
+
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+    #solver.set_time_limit = 60000
+   
+
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                if bin_items:
+                    num_bins += 1
+                    if bin_weight/2400000 < 0.85 and bin_weight/2400000 > 0.25:
+                        bin_usage += round(bin_weight/2400000, 2)
+                    elif bin_weight/2400000 > 0.85:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+        
+        FlatBarNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+        FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
+        FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
+        dfFlatBarTypeSum = dfFlatBarType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
+        dfFlatBarTypeSum['ORDER'] = num_bins
+        dfFlatBarTypeSum['USAGE'] = bin_usage
+        FlatBarCutTicketWorksetDataFrame.append(dfFlatBarTypeSum)
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal or feasible solution.')
+
+        
+#saving FlatBar nesting results   
+FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
+FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
+
+for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+    dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='ITEM')
+    dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+    dfFlatBarCutTicket['SIZE'] = "20'"
+    dfFlatBarCutTicket['INVENTORY ID'] = None
+    dfFlatBarCutTicket = dfFlatBarCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+    dfFlatBarCutTicket.to_excel(writerCutTicket, sheet_name=dfFlatBarCutTicket.iloc[0,1] + " | " + dfFlatBarCutTicket.iloc[0,10])
+
+writerCutTicket.close()
+
+writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
+FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
+FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+#print(FlatBarPostNestDataFrameSUM)
+FlatBarPostNestDataFrameSUM.to_excel(writer)
+writer.close()
+
+#combined anglematic nested order
+dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
+dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
+dfAnglematicNested['HEAT #'] = None
+dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+
 #Combined Anglematic Order#
 
-dfAnglematicInput = [dfAngleGroup,dfFlatBarGroup[1:]]
+dfAnglematicInput = [dfAngleGroup,dfFlatBarGroup]
 dfAnglematic = pd.concat(dfAnglematicInput)
 dfAnglematic['HEAT #'] = None
 dfAnglematic.to_excel(output_directory + "//" + projectName + " Anglematic Order.xlsx", sheet_name="Sheet 1")
@@ -121,6 +394,115 @@ dfMisc = dfMisc.sort_values('MATERIAL DESCRIPTION')
 dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 #save to new excel file
 dfMisc.to_excel(output_directory + "//" + projectName + " Misc Material.xlsx", sheet_name="Sheet 1")
+
+#prepping data for sign bracket nesting
+dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
+dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip())
+dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
+dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
+dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
+dfSignBracketNest['QTY'] = 1
+dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
+dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
+dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUGSignBracketPRE.xlsx", sheet_name="Sheet 1")
+
+#prepping excel sheet for FlatBar order after nesting
+SignBracketCutTicketWorksetDataFrame = []
+SignBracketNestWorksetDataFrame = []
+
+def create_data_model_sign_bracket():
+      data = {}
+      data['weights'] = dfSignBracketType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 4800000
+      data['material'] = dfSignBracketType.iloc[0,7]
+      data['structures'] = dfSignBracketType.iloc[0,11]
+      data['drawing'] = dfSignBracketType.iloc[0,1]
+      return data
+
+#angle nesting fuction
+for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
+    
+    
+    data = create_data_model_sign_bracket()
+
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+    #solver.set_time_limit = 60000
+   
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                        SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
+                        SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
+                if bin_items:
+                    num_bins += 1
+                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                        bin_usage += round(bin_weight/4800000, 2)
+                    elif bin_weight/4800000 > 0.75:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal or feasible solution.')
+
+if SignBracketNestWorksetDataFrame:
+    SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
+    SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    SignBracketPoseNestDataFrame['STOCK CODE'] = None
+    SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
+    SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
+    SignBracketPoseNestDataFrame['LOCATION'] = None
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
+    SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
@@ -155,35 +537,6 @@ dfNutsAndBoltsVerif['USE'] = "Samples"
 #save to new excel file
 dfNutsAndBoltsVerif.to_excel(output_directory + "//" + projectName + " Verification Hardware Order.xlsx", sheet_name="Sheet 1")
 
-# OLD shop bolts
-#filter for shop bolts and field bolts. filter is whether sheet name contains an E
-#dfShopBolts = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
-#dfShopBolts = dfShopBolts[~dfShopBolts['DRAWING'].str.contains("CA", na=False, case=False)]
-#get a sum of bolts by type and station
-#dfShopBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#add 8% or +5 to shop bolts, whichever is more
-#dfShopBolts['ORDER'] = dfShopBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
-#round up
-#dfShopBolts['ORDER'] = dfShopBolts['ORDER'].apply(np.ceil)
-#save to separate excel file
-#dfShopBolts.to_excel(output_directory + "//DEBUGShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
-#add sheet name to station name column'
-#dfShopBoltsCheck = dfShopBolts.copy(deep=True)
-#dfShopBoltsOrder = dfShopBolts.copy(deep=True)
-#dfShopBoltsOrder['STRUCTURES'] = dfShopBoltsOrder['DRAWING'] + ' | ' + dfShopBoltsOrder['STRUCTURES']
-#delete sheet name column
-#dfShopBoltsOrder = dfShopBoltsOrder.drop('DRAWING', axis=1)
-#delete qty column
-#dfShopBoltsOrder = dfShopBoltsOrder.drop('QTY', axis=1)
-#pivot data to match nuts and bolts order form
-#dfShopBoltsOrder['GRADE'] = dfShopBoltsOrder['GRADE'].fillna("N/A")
-#dfShopBoltsOrder = pd.pivot_table(dfShopBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#add total qty column adding together each bolt/nut/washer type
-#dfShopBoltsOrder['TOTAL QTY'] = dfShopBoltsOrder.sum(axis=1)
-#add column labeling all as "ASSY" so bolt order gets marked correctly
-#dfShopBoltsOrder['USE'] = "ASSY"
-#save to excel file
-#dfShopBoltsOrder.to_excel(output_directory + "//Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 #NEW shop bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains an E
@@ -223,9 +576,11 @@ dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
 dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
 # For each grouping Apply insert headers
 dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfShopBolts3))
+        .apply(lambda d: pd.concat([d, dfShopBolts3]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfShopBolts4 = pd.concat([dfShopBolts4, dfShopBolts2.tail(1)], ignore_index=True)
 dfShopBolts4.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -266,39 +621,13 @@ dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
 # For each grouping Apply insert headers
 dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfColAssyBolts2))
+        .apply(lambda d: pd.concat([d, dfColAssyBolts2]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfColAssyBolts3 = pd.concat([dfColAssyBolts3, dfColAssyBolts.tail(1)], ignore_index=True)
 dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
-# #column assy bolts
-# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-# dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
-# #add 8% or +5 to shop bolts, whichever is more
-# dfColAssyBolts['ORDER'] = dfColAssyBolts['QTY'].apply(lambda row:(row*1.08) if row>62 else (row+5))
-# #round up
-# dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
-# #get a sum of bolts by type and station
-# dfColAssyBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-# #save to new excel file
-# dfColAssyBolts.to_excel(output_directory + "//DEBUGColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
-# #add e-sheet name to station name column
-# dfColAssyBoltsCheck = dfColAssyBolts.copy(deep=True)
-# dfColAssyBoltsOrder = dfColAssyBolts.copy(deep=True)
-# dfColAssyBoltsOrder['STRUCTURES'] = dfColAssyBoltsOrder['DRAWING'] + ' | ' + dfColAssyBoltsOrder['STRUCTURES']
-# #delete e-sheet name column
-# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('DRAWING', axis=1)
-# #delete qty column
-# dfColAssyBoltsOrder = dfColAssyBoltsOrder.drop('QTY', axis=1)
-# #pivot data to match nuts and bolts order form
-# dfColAssyBoltsOrder['GRADE'] = dfColAssyBoltsOrder['GRADE'].fillna("N/A")
-# dfColAssyBoltsOrder = pd.pivot_table(dfColAssyBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-# #add total qty column adding together each bolt/nut/washer type
-# dfColAssyBoltsOrder['TOTAL QTY'] = dfColAssyBoltsOrder.sum(axis=1)
-# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-# dfColAssyBoltsOrder['USE'] = "COLUMN ASSY"
-# #save to excel file
-# dfColAssyBoltsOrder.to_excel(output_directory + "//Column Assy Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 #NEW field bolts
 #filter for shop bolts and field bolts. filter is whether sheet name contains "CA"
@@ -337,53 +666,12 @@ dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
 dfFieldBolts2 = pd.DataFrame([[''] * len(dfFieldBolts.columns)], columns=dfFieldBolts.columns)
 # For each grouping Apply insert headers
 dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
-        .apply(lambda d: d.append(dfFieldBolts2))
+        .apply(lambda d: pd.concat([d,dfFieldBolts2]))
         .iloc[:-2]
         .reset_index(drop=True))
+#adding last line back on, not sure why it gets deleted
+dfFieldBolts3 = pd.concat([dfFieldBolts3, dfFieldBolts.tail(1)], ignore_index=True)
 dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
-
-# #field bolts
-# #filter for shop bolts and field bolts. filter is whether sheet name contains an E
-# dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
-# #add 2 to each bolt count
-# dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
-# #get a sum of bolts by type and station
-# dfFieldBolts.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','DRAWING','STRUCTURES', 'QTY', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-# #save to new excel file
-# dfFieldBolts.to_excel(output_directory + "//DEBUGFieldNuts&Bolts.xlsx", sheet_name="Sheet 1")
-# #add e-sheet name to station name column
-# dfFieldBoltsOrder = dfFieldBolts
-# dfFieldBoltsOrder['STRUCTURES'] = dfFieldBoltsOrder['DRAWING'] + ' | ' + dfFieldBoltsOrder['STRUCTURES']
-# #delete e-sheet name column
-# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('DRAWING', axis=1)
-# #delete qty column
-# dfFieldBoltsOrder = dfFieldBoltsOrder.drop('QTY', axis=1)
-# #pivot data to match nuts and bolts order form
-# dfFieldBoltsOrder['GRADE'] = dfFieldBoltsOrder['GRADE'].fillna("N/A")
-# dfFieldBoltsOrder = pd.pivot_table(dfFieldBoltsOrder, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-# #add total qty column adding together each bolt/nut/washer type
-# dfFieldBoltsOrder['TOTAL QTY'] = dfFieldBoltsOrder.sum(axis=1)
-# #add column labeling all as "SHIP LOOSE" so bolt order gets marked correctly
-# dfFieldBoltsOrder['USE'] = "SHIP LOOSE"
-# #save to excel file
-# dfFieldBoltsOrder.to_excel(output_directory + "//Ship Loose Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
-
-#function for checking old nuts and bolts orders
-#adds assy bolts and col assy bolts
-#dfNutsAndBoltsCheck = pd.concat([dfShopBoltsCheck, dfColAssyBoltsCheck])
-#delete drawing column
-#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('DRAWING', axis=1)
-#delete qty column
-#dfNutsAndBoltsCheck = dfNutsAndBoltsCheck.drop('QTY', axis=1)
-#adds together quantities of similar nuts and bolts
-#dfNutsAndBoltsCheck['GRADE'] = dfNutsAndBoltsCheck['GRADE'].fillna("N/A")
-#dfNutsAndBoltsCheck.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE','STRUCTURES', 'ORDER'], dropna=False).sum(numeric_only=True).reset_index(inplace=True)
-#pivots info to match old nuts and bolts order form
-#dfNutsAndBoltsCheck= pd.pivot_table(dfNutsAndBoltsCheck, values='ORDER', index=['PROJECT','MATERIAL DESCRIPTION', 'GRADE'], columns='STRUCTURES', aggfunc=np.sum, fill_value=0)
-#adds sum column to end
-#dfNutsAndBoltsCheck['TOTAL QTY'] = dfNutsAndBoltsCheck.sum(axis=1)
-#saves to new excel form
-#dfNutsAndBoltsCheck.to_excel(output_directory + "//CHECK OLD Nuts&Bolts ORDER.xlsx", sheet_name="Sheet 1")
 
 
 #####Misc Hardware#####
@@ -398,25 +686,117 @@ dfRemain.to_excel(output_directory + "//" + projectName + " Misc Hardware.xlsx",
 
 #filter out everything but clamp plates
 dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
-#sory be part number column
-dfClampPl = dfClampPl.sort_values('PART NUMBER')
-#delete unnecessary columns
-dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
-dfClampPl = dfClampPl.drop('REV', axis=1)
-dfClampPl = dfClampPl.drop('ITEM', axis=1)
-dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
-dfClampPl = dfClampPl.drop('SHEET', axis=1)
-dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
-dfClampPl = dfClampPl.drop('WIDTH', axis=1)
-dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
-dfClampPl = dfClampPl.drop('DRAWING', axis=1)
-dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
-dfClampPl = dfClampPl.drop('QTY', axis=1)
-dfClampPl = dfClampPl.drop('ASSY.', axis=1)
-dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
-dfClampPl = dfClampPl.drop('GRADE', axis=1)
-#add together clamp plates of the same name
-dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
-#save to new excel file
-dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
+if dfClampPl.empty == False:
+    dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip())
+    dfClampPl = dfClampPl.loc[dfClampPl.index.repeat(dfClampPl['QTY'])].reset_index(drop=True)
+    dfClampPl['QTY'] = 1
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*10000)
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+    #sory be part number column
+    dfClampPl = dfClampPl.sort_values('PART NUMBER')
+    #delete unnecessary columns
+    #dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
+    dfClampPl = dfClampPl.drop('REV', axis=1)
+    #dfClampPl = dfClampPl.drop('ITEM', axis=1)
+    dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
+    dfClampPl = dfClampPl.drop('SHEET', axis=1)
+    #dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
+    dfClampPl = dfClampPl.drop('WIDTH', axis=1)
+    dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
+    #dfClampPl = dfClampPl.drop('DRAWING', axis=1)
+    #dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
+    #dfClampPl = dfClampPl.drop('QTY', axis=1)
+    dfClampPl = dfClampPl.drop('ASSY.', axis=1)
+    dfClampPl = dfClampPl.drop('TOTAL', axis=1)
+    #dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
+    dfClampPl = dfClampPl.drop('GRADE', axis=1)
+    #add together clamp plates of the same name
+    #dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
+    #save to new excel file
+    dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
+#prepping excel sheet for FlatBar order after nesting
+ClampPlatetCutTicketWorksetDataFrame = []
+ClampPlateNestWorksetDataFrame = []
+
+def create_data_model_clamp_pl():
+      data = {}
+      data['weights'] = dfClampPlateType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      data['bin_capacity'] = 2400000
+      data['material'] = dfClampPlateType.iloc[0,7]
+      data['structures'] = dfClampPlateType.iloc[0,10]
+      data['drawing'] = dfClampPlateType.iloc[0,1]
+      return data
+
+#angle nesting fuction
+for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
+    
+    data = create_data_model_clamp_pl()
+
+        # Create the mip solver with the SCIP backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+    #solver.set_time_limit = 60000
+   
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        bin_weight += data['weights'][i]
+                        ClampPlateNestDictionary = {'PROJECT': projectName, 'PART': dfClampPlateType.iloc[i,4], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': (data['weights'][i])/10000, 'QTY': 1, 'STICK': j}
+                        ClampPlateNestDictionaryDataFrame = pd.DataFrame(data=ClampPlateNestDictionary, index=[0])
+                        ClampPlateNestWorksetDataFrame.append(ClampPlateNestDictionaryDataFrame)
+                if bin_items:
+                    num_bins += 1
+                    if bin_weight/2400000 < 0.75 and bin_weight/2400000 > 0.25:
+                        bin_usage += round(bin_weight/2400000, 2)
+                    elif bin_weight/2400000 > 0.75:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+        solver.Clear()
+    else:
+          print('The problem does not have an optimal or feasible solution.')
+
+if ClampPlateNestWorksetDataFrame:
+    ClampPlatePoseNestDataFrame = pd.concat(ClampPlateNestWorksetDataFrame, ignore_index=True)
+    ClampPlatePoseNestDataFrame = ClampPlatePoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestClampPlate.xlsx", sheet_name="Sheet 1")

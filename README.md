@@ -1,4 +1,3 @@
-# excel-python
 This is a project trying to automate some of the tedious, yet very important and fault intolerant tasks that are possible to automate based off the master BOM our team receives from the drafting team.
 
 So far this program just does very simple tasks like filtering, sorting, adding.
