@@ -2,6 +2,7 @@ import pandas as pd
 import tkinter as tk
 import numpy as np
 import re
+import pyexcel as p
 from tkinter import filedialog
 from ortools.linear_solver import pywraplp
 
@@ -14,6 +15,11 @@ excel_file = filedialog.askopenfilename()
 
 #asks for save location
 output_directory = filedialog.askdirectory()
+
+if excel_file[len(excel_file)-1] == "s":
+        p.save_book_as(file_name=excel_file,
+               dest_file_name=excel_file + "x")
+        excel_file = excel_file + "x"
 
 ##Multi 21 sheet
 
