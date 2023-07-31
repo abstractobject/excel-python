@@ -3,6 +3,9 @@ import tkinter as tk
 import numpy as np
 import re
 import pyexcel as p
+import sys
+from tkinter import *
+from tkinter import ttk
 from tkinter import filedialog
 from ortools.linear_solver import pywraplp
 
@@ -10,11 +13,73 @@ from ortools.linear_solver import pywraplp
 root = tk.Tk()
 root.withdraw()
 
-#asks for input file
-excel_file = filedialog.askopenfilename()
+gui = Tk()
+gui.geometry("300x150")
+gui.title("Sign Structures Material Order Program")
 
-#asks for save location
-output_directory = filedialog.askdirectory()
+folderPath = StringVar()
+filePath = StringVar()
+
+class FolderSelect(Frame):
+    def __init__(self,parent=None,folderDescription="",**kw):
+        Frame.__init__(self,master=parent,**kw)
+        self.folderPath = StringVar()
+        self.lblName = Label(self, text=folderDescription)
+        self.lblName.grid(row=0,column=0)
+        self.btnFind = ttk.Button(self, text="Browse Folder",command=self.setFolderPath)
+        self.btnFind.grid(row=0,column=1)
+        self.lbl2 = Label(self, text=self.folderPath)
+        self.lbl2.grid(row=1,column=0)
+    def setFolderPath(self):
+        folder_selected = filedialog.askdirectory()
+        self.folderPath.set(folder_selected)
+        self.lbl2.update()
+    @property
+    def folder_path(self):
+        self.lbl2.update()
+        return self.folderPath.get()
+    
+class FileSelect(Frame):
+    def __init__(self,parent=None,folderDescription="",**kw):
+        Frame.__init__(self,master=parent,**kw)
+        self.filePath = StringVar()
+        self.lblName = Label(self, text=folderDescription)
+        self.lblName.grid(row=0,column=0)
+        self.btnFind = ttk.Button(self, text="Browse File",command=self.setFilePath)
+        self.btnFind.grid(row=0,column=1)
+        self.lbl2 = Label(self, text=self.filePath)
+        self.lbl2.grid(row=1,column=0)
+    def setFilePath(self):
+        file_selected = filedialog.askopenfilename()
+        self.filePath.set(file_selected)
+    @property
+    def file_path(self):
+        self.lbl2.update()
+        return self.filePath.get()
+        
+
+def doStuff():
+    global excel_file
+    global output_directory
+    excel_file = file1Select.file_path
+    output_directory = directory1Select.folder_path
+    root.quit()
+
+def endProgram():
+    sys.exit()
+
+
+file1Select = FileSelect(gui,"Excel BOM")
+file1Select.grid(row=0)
+
+directory1Select = FolderSelect(gui,"Output Folder")
+directory1Select.grid(row=1)
+
+c = ttk.Button(gui, text="RUN", command=doStuff)
+c.grid(row=4,column=0)
+e = ttk.Button(gui, text="EXIT", command=endProgram)
+e.grid(row=4,column=1)
+gui.mainloop()
 
 if excel_file[len(excel_file)-1] == "s":
         p.save_book_as(file_name=excel_file,
