@@ -14,8 +14,10 @@ root = tk.Tk()
 root.withdraw()
 
 gui = Tk()
-gui.geometry("300x150")
-gui.title("Sign Structures Material Order Program")
+gui.geometry("400x150")
+gui.title("SS Mat Order")
+gui.columnconfigure(0, weight=3)
+gui.columnconfigure(1, weight=1)
 
 folderPath = StringVar()
 filePath = StringVar()
@@ -25,18 +27,18 @@ class FolderSelect(Frame):
         Frame.__init__(self,master=parent,**kw)
         self.folderPath = StringVar()
         self.lblName = Label(self, text=folderDescription)
-        self.lblName.grid(row=0,column=0)
-        self.btnFind = ttk.Button(self, text="Browse Folder",command=self.setFolderPath)
-        self.btnFind.grid(row=0,column=1)
-        self.lbl2 = Label(self, text=self.folderPath)
-        self.lbl2.grid(row=1,column=0)
+        self.lblName.grid(row=0,column=0, sticky="ew", pady=1)
+        self.entPath = Entry(self, textvariable=self.folderPath)
+        self.entPath.grid(row=1,column=0, sticky="ew", pady=1)
+        self.btnFind = ttk.Button(self, text="Select Folder",command=self.setFolderPath)
+        self.btnFind.grid(row=1,column=1, pady=1)
     def setFolderPath(self):
         folder_selected = filedialog.askdirectory()
         self.folderPath.set(folder_selected)
-        self.lbl2.update()
+        self.entPath.insert(0,folder_selected)
     @property
     def folder_path(self):
-        self.lbl2.update()
+        self.entPath.update()
         return self.folderPath.get()
     
 class FileSelect(Frame):
@@ -44,17 +46,18 @@ class FileSelect(Frame):
         Frame.__init__(self,master=parent,**kw)
         self.filePath = StringVar()
         self.lblName = Label(self, text=folderDescription)
-        self.lblName.grid(row=0,column=0)
-        self.btnFind = ttk.Button(self, text="Browse File",command=self.setFilePath)
-        self.btnFind.grid(row=0,column=1)
-        self.lbl2 = Label(self, text=self.filePath)
-        self.lbl2.grid(row=1,column=0)
+        self.lblName.grid(row=0,column=0, sticky="ew", pady=1)
+        self.entPath = Entry(self, textvariable=self.filePath)
+        self.entPath.grid(row=1,column=0, sticky="ew", pady=1)
+        self.btnFind = ttk.Button(self, text="Select File",command=self.setFilePath)
+        self.btnFind.grid(row=1,column=1, pady=1)
     def setFilePath(self):
         file_selected = filedialog.askopenfilename()
         self.filePath.set(file_selected)
+        self.entPath.insert(0,file_selected)
     @property
     def file_path(self):
-        self.lbl2.update()
+        self.entPath.update()
         return self.filePath.get()
         
 
@@ -69,16 +72,16 @@ def endProgram():
     sys.exit()
 
 
-file1Select = FileSelect(gui,"Excel BOM")
+file1Select = FileSelect(gui,"Excel BOM File:")
 file1Select.grid(row=0)
 
-directory1Select = FolderSelect(gui,"Output Folder")
+directory1Select = FolderSelect(gui,"Order Files Output Folder:")
 directory1Select.grid(row=1)
 
 c = ttk.Button(gui, text="RUN", command=doStuff)
-c.grid(row=4,column=0)
+c.grid(row=4,column=0, pady=1)
 e = ttk.Button(gui, text="EXIT", command=endProgram)
-e.grid(row=4,column=1)
+e.grid(row=4,column=1, pady=1)
 gui.mainloop()
 
 if excel_file[len(excel_file)-1] == "s":
