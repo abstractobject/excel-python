@@ -116,12 +116,7 @@ dfAngleRound.loc[dfAngleRound['LENGTH.1'] >240, 'LENGTH.1'] = 480
 #column sum = (total qty) x (length in inches)
 dfAngleSum = dfAngleRound
 dfAngleSum['SUM'] = dfAngleSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
-#save to new excel file
-#dfAngle.to_excel(output_directory + "//DEBUGMultiAngle.xlsx", sheet_name="Sheet 1")
-#add all of each material together
-#dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
 dfAngleGroup = dfAngleSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
-#dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfAngleGroup = dfAngleGroup.drop('REV', axis=1)
 dfAngleGroup = dfAngleGroup.drop('ITEM', axis=1)
@@ -134,35 +129,38 @@ dfAngleGroup['ROUND'] = dfAngleGroup['STOCK'].apply(np.ceil)
 dfAngleGroup['+10%'] = dfAngleGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1)
 #add ORDER coumn that rounds up +10% column
 dfAngleGroup['ORDER'] = dfAngleGroup['+10%'].apply(np.ceil)
-#save final product to different excel file
-dfAngleGroup.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleSum.xlsx", sheet_name="Sheet 1")
 #delete the math columns so you get a clean copy-paste to the order form
 dfAngleGroup = dfAngleGroup.drop('SUM', axis=1)
 dfAngleGroup = dfAngleGroup.drop('STOCK', axis=1)
 dfAngleGroup = dfAngleGroup.drop('ROUND', axis=1)
 dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
-#save the final order to a different excel file
-#dfAngleGroup.to_excel(output_directory + "//MultiAngleOrder.xlsx", sheet_name="Sheet 1")
 
 #prepping data for angle nesting
 dfAngleNest = dfAngle.copy(deep=True)
+#splitting by structure, "qty req'd" is no longer relevant
 dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
+#dropping assy and totat. not needed after splitting by structure
 dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
 dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
+#one line per part, 10 qty = 10 lines
 dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
+#setting all qty to 1
 dfAngleNest['QTY'] = 1
+#deleting unnecessary/irrelevant columns
 dfAngleNest = dfAngleNest.drop('REV', axis=1)
 dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
 dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
-#dfAngleNest = dfAngleNest.drop('ITEM', axis=1)
 dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
 dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
 dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
 dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
 dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
+#making length an interger, makes computer sweat less
 dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*10000)
+#adding kerf unless the part is a whole stick
 dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+#saving to excel file
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for angle order after nesting
@@ -172,9 +170,11 @@ AngleNestWorksetDataFrame = []
 
 def create_data_model_angle():
       data = {}
+      #part lengths
       data['weights'] = dfAngleType['LENGTH.1'].values.tolist()
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
+      #stick size
       data['bin_capacity'] = 4800000
       data['material'] = dfAngleType.iloc[0,5]
       data['structures'] = dfAngleType.iloc[0,8]
@@ -183,14 +183,11 @@ def create_data_model_angle():
 
 #angle nesting fuction
 for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
-    
-    #angleMaterial = dfAngleType.iloc[0,5]
 
     data = create_data_model_angle()
 
-        # Create the mip solver with the SCIP backend.
+        # Create the mip solver with the cp-sat backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    #solver.set_time_limit = 60000
    
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
@@ -230,26 +227,33 @@ for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION'
                 for i in data['items']:
                     if x[i, j].solution_value() > 0:
                         bin_items.append(i)
+                        #stick usage
                         bin_weight += data['weights'][i]
                 if bin_items:
+                    #counting number of sticks pulled
                     num_bins += 1
+                    #estimating material usage
                     if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
                         bin_usage += round(bin_weight/4800000, 2)
                     elif bin_weight/4800000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-                    
+        #make list of parts
         AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+        #list to dataframe
         AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
+        #add parts to overall list
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
         dfAngleTypeSum = dfAngleType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
         dfAngleTypeSum['ORDER'] = num_bins
         dfAngleTypeSum['USAGE'] = bin_usage
         AngleCutTicketWorksetDataFrame.append(dfAngleTypeSum)
+        #trying to be nice to RAM
         solver.Clear()
     else:
-          print('The problem does not have an optimal or feasible solution.')
+          #there's either a fatal problem, or there's too many "good" solutions
+          print('Angle nesting problem does not have an optimal or feasible solution.')
 
         
 #saving angle nesting results        
@@ -259,22 +263,30 @@ AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUG
 writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
 
 for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+    #sorting by BOM item number first
     dfAngleCutTicket = dfAngleCutTicket.sort_values(by='ITEM')
+    #then by material type
     dfAngleCutTicket = dfAngleCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+    #filling out cut ticket info, stick size is 40'
     dfAngleCutTicket['SIZE'] = "40'"
+    #adding blank column so output can be copy-pasted to cut ticket template
     dfAngleCutTicket['INVENTORY ID'] = None
+    #re-sorting columns in correct order
     dfAngleCutTicket = dfAngleCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+    #adding to excel file, tab name is "sheet name | station"
     dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
 
-
+#new excel file
 writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
 AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
 AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+#deleting unnessary/irrelevant columns
 AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
 AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
+#combing by material type
 AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-#print(AnglePostNestDCutTicketSUM)
 AnglePoseNestDataFrameSUM.to_excel(writer)
+#saving excel file
 writer.close()
 
 #####Flat Bar order#####
@@ -289,11 +301,8 @@ dfFlatBarRound.loc[dfFlatBarRound['LENGTH.1'] >120, 'LENGTH.1'] = 240
 #column sum = (total qty) x (length in inches)
 dfFlatBarSum = dfFlatBarRound
 dfFlatBarSum['SUM'] = dfFlatBarSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
-#save to new excel file
-#dfFlatBar.to_excel(output_directory + "//DEBUGMultiFlatBar.xlsx", sheet_name="Sheet 1")
 #add all of each material together
 dfFlatBarGroup= dfFlatBarSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
-#dfFlatBarGroup = dfFlatBar.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
 dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ITEM', axis=1)
@@ -306,35 +315,38 @@ dfFlatBarGroup['ROUND'] = dfFlatBarGroup['STOCK'].apply(np.ceil)
 dfFlatBarGroup['+10%'] = dfFlatBarGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1)
 #add ORDER coumn that rounds up +10% column
 dfFlatBarGroup['ORDER'] = dfFlatBarGroup['+10%'].apply(np.ceil)
-#save final product to different excel file
-dfFlatBarGroup.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarSum.xlsx", sheet_name="Sheet 1")
-#delete the math columns so you get a clean copy-paste to the order form
+#deleting unnessary/irrelevant columns
 dfFlatBarGroup = dfFlatBarGroup.drop('SUM', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('STOCK', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ROUND', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
-#save the final order to a different excel file
-#dfFlatBarGroup.to_excel(output_directory + "//MultiFlatBarOrder.xlsx", sheet_name="Sheet 1")
 
 #prepping data for flat bar nesting
 dfFlatBarNest = dfFlatBar.copy(deep=True)
+#splitting by structure, "qty req'd" is no longer relevant
 dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip())
+#dropping assy and totat. not needed after splitting by structure
 dfFlatBarNest = dfFlatBarNest.drop('ASSY.', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('TOTAL', axis=1)
+#one line per part, 10 qty = 10 lines
 dfFlatBarNest = dfFlatBarNest.loc[dfFlatBarNest.index.repeat(dfFlatBarNest['QTY'])].reset_index(drop=True)
+#setting all qty to 1
 dfFlatBarNest['QTY'] = 1
+#deleting unnessary/irrelevant columns
 dfFlatBarNest = dfFlatBarNest.drop('REV', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('SHEET', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('MAIN NUMBER', axis=1)
-#dfFlatBarNest = dfFlatBarNest.drop('ITEM', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('PART DESCRIPTION', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WIDTH', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
+#making length an interger, makes computer sweat less
 dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*10000)
+#adding kerf unless the part is a whole stick (should not happen on flat bar anyways)
 dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+#saving to excel file
 dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for FlatBar order after nesting
@@ -343,9 +355,11 @@ FlatBarNestWorksetDataFrame = []
 
 def create_data_model_FlatBar():
       data = {}
+      #part lengths
       data['weights'] = dfFlatBarType['LENGTH.1'].values.tolist()
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
+      #stick size
       data['bin_capacity'] = 2400000
       data['material'] = dfFlatBarType.iloc[0,5]
       data['structures'] = dfFlatBarType.iloc[0,8]
@@ -354,16 +368,12 @@ def create_data_model_FlatBar():
 
 #FlatBar nesting fuction
 for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
-
-    #flatBarMaterial = dfFlatBarType.iloc[0,3]
-
+    
     data = create_data_model_FlatBar()
 
-        # Create the mip solver with the SCIP backend.
+        # Create the mip solver with the cp-sat backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    #solver.set_time_limit = 60000
    
-
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
     x = {}
@@ -392,7 +402,9 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
 
     status = solver.Solve()
 
+    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        #zero out to start
         num_bins = 0
         bin_usage = 0
         for j in data['bins']:
@@ -402,60 +414,83 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
                 for i in data['items']:
                     if x[i, j].solution_value() > 0:
                         bin_items.append(i)
+                        #stick usage
                         bin_weight += data['weights'][i]
                 if bin_items:
+                    #counting number of sticks pulled
                     num_bins += 1
+                    #estimating material usage
                     if bin_weight/2400000 < 0.85 and bin_weight/2400000 > 0.25:
                         bin_usage += round(bin_weight/2400000, 2)
                     elif bin_weight/2400000 > 0.85:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-        
+        #make list of parts
         FlatBarNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+        #list to dataframe
         FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
+        #add parts to overall list
         FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
         dfFlatBarTypeSum = dfFlatBarType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
         dfFlatBarTypeSum['ORDER'] = num_bins
         dfFlatBarTypeSum['USAGE'] = bin_usage
         FlatBarCutTicketWorksetDataFrame.append(dfFlatBarTypeSum)
+        #trying to be nice to RAM
         solver.Clear()
     else:
-          print('The problem does not have an optimal or feasible solution.')
+          #there's either a fatal problem, or there's too many "good" solutions
+          print('Flat bar nesting problem does not have an optimal or feasible solution.')
 
         
 #saving FlatBar nesting results   
 FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
 FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
 
+#each page of cut ticket being written to excel file
 for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+    #sorting by BOM item number first
     dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='ITEM')
+    #then by material type
     dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+    #filling out cut ticket info, stick size is 20'
     dfFlatBarCutTicket['SIZE'] = "20'"
+    #adding blank column so output can be copy-pasted to cut ticket template
     dfFlatBarCutTicket['INVENTORY ID'] = None
+    #re-sorting columns in correct order
     dfFlatBarCutTicket = dfFlatBarCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+    #adding to excel file, tab name is "sheet name | station"
     dfFlatBarCutTicket.to_excel(writerCutTicket, sheet_name=dfFlatBarCutTicket.iloc[0,1] + " | " + dfFlatBarCutTicket.iloc[0,10])
 
+#saving excel file
 writerCutTicket.close()
 
+#new excel file
 writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
 FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
+#combining by material type
 FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-#print(FlatBarPostNestDataFrameSUM)
 FlatBarPostNestDataFrameSUM.to_excel(writer)
+#saving excel file
 writer.close()
 
 #combined anglematic nested order
 dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
 dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
+#adding blank column so heat numbers can be filled in by Shellie
 dfAnglematicNested['HEAT #'] = None
+#deleting unnessary column
+dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
+#saving to excel file
 dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 #Combined Anglematic Order#
 
 dfAnglematicInput = [dfAngleGroup,dfFlatBarGroup]
 dfAnglematic = pd.concat(dfAnglematicInput)
+#adding blank column so heat numbers can be filled in by Shellie
 dfAnglematic['HEAT #'] = None
+#saving to excel file
 dfAnglematic.to_excel(output_directory + "//" + projectName + " Anglematic Order.xlsx", sheet_name="Sheet 1")
 
 #####Misc Material#####
@@ -470,22 +505,31 @@ dfMisc['SUM'] = dfMisc.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
 dfMisc.to_excel(output_directory + "//" + projectName + " Misc Material.xlsx", sheet_name="Sheet 1")
 
 #prepping data for sign bracket nesting
+#grabbing anything that includes "w-beam" or "s-beam" in the part description and has SB in the part name
 dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
 dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
+#splitting by structure, "qty req'd" is no longer relevant
 dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip())
+#dropping assy and totat. not needed after splitting by structure
 dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
+#making length an interger, makes computer sweat less
 dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
+#adding kerf unless the part is a whole stick (should not happen on sign brackets anyways)
 dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+#one line per part, 10 qty = 10 lines
 dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
+#setting all qty to 1
 dfSignBracketNest['QTY'] = 1
+#deleting unnecessary/irrelevant columns
 dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
-dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUGSignBracketPRE.xlsx", sheet_name="Sheet 1")
+#saving to excel file
+dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
 
 #prepping excel sheet for FlatBar order after nesting
 SignBracketCutTicketWorksetDataFrame = []
@@ -493,9 +537,11 @@ SignBracketNestWorksetDataFrame = []
 
 def create_data_model_sign_bracket():
       data = {}
+      #part lengths
       data['weights'] = dfSignBracketType['LENGTH.1'].values.tolist()
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
+      #stick size
       data['bin_capacity'] = 4800000
       data['material'] = dfSignBracketType.iloc[0,7]
       data['structures'] = dfSignBracketType.iloc[0,11]
@@ -508,9 +554,8 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
     
     data = create_data_model_sign_bracket()
 
-        # Create the mip solver with the SCIP backend.
+        # Create the mip solver with the cp-sat backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    #solver.set_time_limit = 60000
    
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
@@ -540,7 +585,9 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
 
     status = solver.Solve()
 
+    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        #zero out to start
         num_bins = 0
         bin_usage = 0
         for j in data['bins']:
@@ -550,44 +597,55 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
                 for i in data['items']:
                     if x[i, j].solution_value() > 0:
                         bin_items.append(i)
+                        #stick usage
                         bin_weight += data['weights'][i]
                         SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                        #list of parts to dataframe
                         SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
+                        #add the parts to the overall list
                         SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
                 if bin_items:
+                    #counting number of sticks pulled
                     num_bins += 1
+                    #estimating material usage
                     if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
                         bin_usage += round(bin_weight/4800000, 2)
                     elif bin_weight/4800000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
+        #trying to be nice to RAM
         solver.Clear()
     else:
-          print('The problem does not have an optimal or feasible solution.')
+          #there's either a fatal problem, or there's too many "good" solutions
+          print('Sign bracket nesting problem does not have an optimal or feasible solution.')
 
 if SignBracketNestWorksetDataFrame:
     SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
+    #combining multiple quantities of the same part on the same stick
     SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    #adding cutting instruction for cut ticket
     SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
+    #sorting by what stick the part is nested on
     SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    #adding blank columns so output can be copy-pasted to cut ticket template
     SignBracketPoseNestDataFrame['STOCK CODE'] = None
     SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
     SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
     SignBracketPoseNestDataFrame['LOCATION'] = None
+    #sorting columns in correct order
     SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
-    SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestSignBracket.xlsx", sheet_name="Sheet 1")
+    #save to excel file
+    SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Sign Brackets Nested.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
 #filter out everyhing but nuts, bolts, and washers only
 dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)].copy(deep=True)
-#sort by column MATERIAL DESCRIPTION
-#dfNutsAndBolts = dfNutsAndBolts.sort_values('MATERIAL DESCRIPTION')
 #explodes entries with multiple stations to one line per station
 dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip())
-#deleting assy and total columns to avoid confusion now structures are one pre line
+#deleting assy and total columns to avoid confusion now structures are one per line
 dfNutsAndBolts = dfNutsAndBolts.drop('ASSY.', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('TOTAL', axis=1)
 #deleting columns that don't help ordering nust and bolts
@@ -597,6 +655,9 @@ dfNutsAndBolts = dfNutsAndBolts.drop('WEIGHT', axis=1)
 
 #verification hardware
 dfNutsAndBoltsVerif = dfNutsAndBolts.copy(deep=True)
+#deleting 3/8" dia and 1/2" dia hardware. we don't need to order these for verification
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('1/2"ø', na=False, case=False)].copy(deep=True)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('3/8"ø', na=False, case=False)].copy(deep=True)
 #delete irrelevant columns
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('DRAWING', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
@@ -613,7 +674,7 @@ dfNutsAndBoltsVerif.to_excel(output_directory + "//" + projectName + " Verificat
 
 
 #NEW shop bolts
-#filter for shop bolts and field bolts. filter is whether sheet name contains an E
+#filter for shop bolts and field bolts. filter is whether sheet name contains an E or CA
 dfShopBolts2 = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=False, case=False)].copy(deep=True)
 dfShopBolts2 = dfShopBolts2[~dfShopBolts2['DRAWING'].str.contains("CA", na=False, case=False)]
 #function for sorting bolts by dia
@@ -633,6 +694,7 @@ dfShopBolts2 = dfShopBolts2.drop('WIDTH', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('WIDTH.1', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('LENGTH', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('LENGTH.1', axis=1)
+#deleting washer and nut grades because our drafters don't care they're wrong
 dfShopBolts2.loc[dfShopBolts2['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
 dfShopBolts2.loc[dfShopBolts2['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #add 8% or +5 to shop bolts, whichever is more
@@ -642,11 +704,11 @@ dfShopBolts2['ORDER'] = dfShopBolts2['ORDER'].apply(np.ceil)
 #delete unnecessary columns
 dfShopBolts2 = dfShopBolts2.drop('PART DESCRIPTION', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('QTY', axis=1)
+#adding "use" column so vendor can mark buckets accordingly
 dfShopBolts2['USE'] = "ASSY"
-#save to separate excel file
-#dfShopBolts2.to_excel(output_directory + "//DEBUG-NEW-ShopNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
+#function for adding blank lines after every station/sheet
 dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
 # For each grouping Apply insert headers
 dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
@@ -655,6 +717,7 @@ dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
         .reset_index(drop=True))
 #adding last line back on, not sure why it gets deleted
 dfShopBolts4 = pd.concat([dfShopBolts4, dfShopBolts2.tail(1)], ignore_index=True)
+#saving to excel file
 dfShopBolts4.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -678,6 +741,7 @@ dfColAssyBolts = dfColAssyBolts.drop('WIDTH', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('WIDTH.1', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('LENGTH', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('LENGTH.1', axis=1)
+#deleting washer and nut grades because our drafters don't care they're wrong
 dfColAssyBolts.loc[dfColAssyBolts['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
 dfColAssyBolts.loc[dfColAssyBolts['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #add 8% or +5 to shop bolts, whichever is more
@@ -687,19 +751,19 @@ dfColAssyBolts['ORDER'] = dfColAssyBolts['ORDER'].apply(np.ceil)
 #delete unnecessary columns
 dfColAssyBolts = dfColAssyBolts.drop('PART DESCRIPTION', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('QTY', axis=1)
+#adding "use" column so vendor can mark buckets accordingly
 dfColAssyBolts['USE'] = "COLUMN ASSY"
-#save to separate excel file
-#dfColAssyBolts.to_excel(output_directory + "//DEBUG-NEW-ColAssyNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
+#function for adding blank lines after every sheet/station
 dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
-# For each grouping Apply insert headers
 dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
         .apply(lambda d: pd.concat([d, dfColAssyBolts2]))
         .iloc[:-2]
         .reset_index(drop=True))
 #adding last line back on, not sure why it gets deleted
 dfColAssyBolts3 = pd.concat([dfColAssyBolts3, dfColAssyBolts.tail(1)], ignore_index=True)
+#saving to excel file
 dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -724,6 +788,7 @@ dfFieldBolts = dfFieldBolts.drop('WIDTH', axis=1)
 dfFieldBolts = dfFieldBolts.drop('WIDTH.1', axis=1)
 dfFieldBolts = dfFieldBolts.drop('LENGTH', axis=1)
 dfFieldBolts = dfFieldBolts.drop('LENGTH.1', axis=1)
+#deleting washer and nut grades because our drafters don't care they're wrong
 dfFieldBolts.loc[dfFieldBolts['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
 dfFieldBolts.loc[dfFieldBolts['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #add 2 to each bolt count
@@ -731,9 +796,8 @@ dfFieldBolts['ORDER'] = dfFieldBolts.apply(lambda row:(row['QTY'] + 2),axis=1)
 #delete unnecessary columns
 dfFieldBolts = dfFieldBolts.drop('PART DESCRIPTION', axis=1)
 dfFieldBolts = dfFieldBolts.drop('QTY', axis=1)
+#adding "use" column so vendor can mark buckets accordingly
 dfFieldBolts['USE'] = "SHIP LOOSE"
-#save to separate excel file
-#dfFieldBolts.to_excel(output_directory + "//DEBUG-NEW-ShipLooseNuts&Bolts.xlsx", sheet_name="Sheet 1")
 #delete unnecessary column
 dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
 #function for adding a blank line after every sheet/station
@@ -745,6 +809,7 @@ dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
         .reset_index(drop=True))
 #adding last line back on, not sure why it gets deleted
 dfFieldBolts3 = pd.concat([dfFieldBolts3, dfFieldBolts.tail(1)], ignore_index=True)
+#saving to excel file
 dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 
 
@@ -761,33 +826,30 @@ dfRemain.to_excel(output_directory + "//" + projectName + " Misc Hardware.xlsx",
 #filter out everything but clamp plates
 dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
 if dfClampPl.empty == False:
+    #adding offset to clamp plate length, done by CPS name
     dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
+    #splitting by structure, "qty req'd" is no longer relevant
     dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
     dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip())
+    #one line per part, 10 qty = 10 lines
     dfClampPl = dfClampPl.loc[dfClampPl.index.repeat(dfClampPl['QTY'])].reset_index(drop=True)
+    #setting all quantities to 1
     dfClampPl['QTY'] = 1
+    #making length an interger, makes computer sweat less
     dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*10000)
+    #adding kerf unless the part is a whole stick (should not happen on clamp plates anyways)
     dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
-    #sory be part number column
+    #sort by part number column
     dfClampPl = dfClampPl.sort_values('PART NUMBER')
     #delete unnecessary columns
-    #dfClampPl['TOTAL'] = dfClampPl.apply(lambda row:(row['QTY'] * row['ASSY.']),axis=1)
     dfClampPl = dfClampPl.drop('REV', axis=1)
-    #dfClampPl = dfClampPl.drop('ITEM', axis=1)
     dfClampPl = dfClampPl.drop('WEIGHT', axis=1)
     dfClampPl = dfClampPl.drop('SHEET', axis=1)
-    #dfClampPl = dfClampPl.drop('MAIN NUMBER', axis=1)
     dfClampPl = dfClampPl.drop('WIDTH', axis=1)
     dfClampPl = dfClampPl.drop('WIDTH.1', axis=1)
-    #dfClampPl = dfClampPl.drop('DRAWING', axis=1)
-    #dfClampPl = dfClampPl.drop('LENGTH.1', axis=1)
-    #dfClampPl = dfClampPl.drop('QTY', axis=1)
     dfClampPl = dfClampPl.drop('ASSY.', axis=1)
     dfClampPl = dfClampPl.drop('TOTAL', axis=1)
-    #dfClampPl = dfClampPl.drop('STRUCTURES', axis=1)
     dfClampPl = dfClampPl.drop('GRADE', axis=1)
-    #add together clamp plates of the same name
-    #dfClampPl = dfClampPl.groupby(['PROJECT', 'PART NUMBER', 'PART DESCRIPTION', 'MATERIAL DESCRIPTION', 'LENGTH'],dropna=False).sum(numeric_only=True).reset_index()
     #save to new excel file
     dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
@@ -797,9 +859,11 @@ ClampPlateNestWorksetDataFrame = []
 
 def create_data_model_clamp_pl():
       data = {}
+      #part lengths
       data['weights'] = dfClampPlateType['LENGTH.1'].values.tolist()
       data['items'] = list(range(len(data['weights'])))
       data['bins'] = data['items']
+      #stick size
       data['bin_capacity'] = 2400000
       data['material'] = dfClampPlateType.iloc[0,7]
       data['structures'] = dfClampPlateType.iloc[0,10]
@@ -811,9 +875,8 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
     
     data = create_data_model_clamp_pl()
 
-        # Create the mip solver with the SCIP backend.
+        # Create the mip solver with the cp-sat backend.
     solver = pywraplp.Solver.CreateSolver('CP-SAT')
-    #solver.set_time_limit = 60000
    
         # Variables
         # x[i, j] = 1 if item i is packed in bin j.
@@ -843,7 +906,9 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
 
     status = solver.Solve()
 
+    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        #zero out to start
         num_bins = 0
         bin_usage = 0
         for j in data['bins']:
@@ -853,24 +918,35 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
                 for i in data['items']:
                     if x[i, j].solution_value() > 0:
                         bin_items.append(i)
+                        #stick usage
                         bin_weight += data['weights'][i]
+                        #make list of parts
                         ClampPlateNestDictionary = {'PROJECT': projectName, 'PART': dfClampPlateType.iloc[i,4], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': (data['weights'][i])/10000, 'QTY': 1, 'STICK': j}
+                        #list of parts to dataframe
                         ClampPlateNestDictionaryDataFrame = pd.DataFrame(data=ClampPlateNestDictionary, index=[0])
+                        #add the parts to the overall list
                         ClampPlateNestWorksetDataFrame.append(ClampPlateNestDictionaryDataFrame)
                 if bin_items:
+                    #counting number of sticks pulled
                     num_bins += 1
+                    #estimating material usage
                     if bin_weight/2400000 < 0.75 and bin_weight/2400000 > 0.25:
                         bin_usage += round(bin_weight/2400000, 2)
                     elif bin_weight/2400000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
+        #trying to be nice to RAM
         solver.Clear()
     else:
-          print('The problem does not have an optimal or feasible solution.')
+          #there's either a fatal problem, or there's too many "good" solutions
+          print('Clamp plate nesting problem does not have an optimal or feasible solution.')
 
 if ClampPlateNestWorksetDataFrame:
     ClampPlatePoseNestDataFrame = pd.concat(ClampPlateNestWorksetDataFrame, ignore_index=True)
+    #combining same parts on same stick
     ClampPlatePoseNestDataFrame = ClampPlatePoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    #sorting to group by stick
     ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
-    ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestClampPlate.xlsx", sheet_name="Sheet 1")
+    #saving to excel file
+    ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Clamp Plates Nested.xlsx", sheet_name="Sheet 1")
