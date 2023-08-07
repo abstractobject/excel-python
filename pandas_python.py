@@ -4,6 +4,7 @@ import numpy as np
 import re
 import pyexcel as p
 import sys
+import math
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
@@ -496,7 +497,7 @@ dfAnglematic.to_excel(output_directory + "//" + projectName + " Anglematic Order
 #####Misc Material#####
 
 #filter out everyhing but misc linear only
-dfMisc = df[df['PART DESCRIPTION'].str.contains("w-beam*|s-beam*|pipe*|tube*", na=False, case=False)]
+dfMisc = df[df['PART DESCRIPTION'].str.contains("w-beam*|s-beam*|pipe*|tube*|s-tee*", na=False, case=False)]
 #sort by column MATERIAL DESCRIPTION
 dfMisc = dfMisc.sort_values('MATERIAL DESCRIPTION')
 #column sum = (total qty) x (length in inches)
@@ -637,6 +638,142 @@ if SignBracketNestWorksetDataFrame:
     SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
     #save to excel file
     SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Sign Brackets Nested.xlsx", sheet_name="Sheet 1")
+
+#prepping data for s-tee nesting
+#grabbing anything that includes "w-beam" or "s-beam" in the part description and has SB in the part name
+dfSteeNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("s-tee*", na=False, case=False)]
+dfSteeNest = dfSteeNest[dfSteeNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
+#splitting by structure, "qty req'd" is no longer relevant
+dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].str.strip())
+#dropping assy and totat. not needed after splitting by structure
+dfSteeNest = dfSteeNest.drop('ASSY.', axis=1)
+dfSteeNest = dfSteeNest.drop('TOTAL', axis=1)
+#making length an interger, makes computer sweat less
+dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: x*10000)
+#S-Tees get 2 per length on s-beams
+dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x/2))
+#adding kerf unless the part is a whole stick (should not happen on s-tees anyways)
+dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+#one line per part, 10 qty = 10 lines
+dfSteeNest = dfSteeNest.loc[dfSteeNest.index.repeat(dfSteeNest['QTY'])].reset_index(drop=True)
+#setting all qty to 1
+dfSteeNest['QTY'] = 1
+#deleting unnecessary/irrelevant columns
+dfSteeNest = dfSteeNest.drop('WIDTH', axis=1)
+dfSteeNest = dfSteeNest.drop('WIDTH.1', axis=1)
+dfSteeNest = dfSteeNest.drop('WEIGHT', axis=1)
+dfSteeNest = dfSteeNest.drop('REV', axis=1)
+dfSteeNest = dfSteeNest.drop('SHEET', axis=1)
+#saving to excel file
+dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
+
+#prepping excel sheet for FlatBar order after nesting
+SteeCutTicketWorksetDataFrame = []
+SteeNestWorksetDataFrame = []
+
+def create_data_model_sign_bracket():
+      data = {}
+      #part lengths
+      data['weights'] = dfSteeType['LENGTH.1'].values.tolist()
+      data['items'] = list(range(len(data['weights'])))
+      data['bins'] = data['items']
+      #stick size
+      data['bin_capacity'] = 4800000
+      data['material'] = dfSteeType.iloc[0,7]
+      data['structures'] = dfSteeType.iloc[0,11]
+      data['drawing'] = dfSteeType.iloc[0,1]
+      return data
+
+#angle nesting fuction
+for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):    
+    
+    data = create_data_model_sign_bracket()
+
+        # Create the mip solver with the cp-sat backend.
+    solver = pywraplp.Solver.CreateSolver('CP-SAT')
+   
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+    x = {}
+    for i in data['items']:
+        for j in data['bins']:
+            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+    y = {}
+    for j in data['bins']:
+        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+
+        # Constraints
+        # Each item must be in exactly one bin.
+    for i in data['items']:
+        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+    for j in data['bins']:
+        solver.Add(
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+            data['bin_capacity'])
+
+        # Objective: minimize the number of bins used.
+    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+
+    status = solver.Solve()
+
+    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        #zero out to start
+        num_bins = 0
+        bin_usage = 0
+        for j in data['bins']:
+            if y[j].solution_value() == 1:
+                bin_items = []
+                bin_weight = 0
+                for i in data['items']:
+                    if x[i, j].solution_value() > 0:
+                        bin_items.append(i)
+                        #stick usage
+                        bin_weight += data['weights'][i]
+                        SteeNestDictionary = {'PROJECT': projectName, 'PART': dfSteeType.iloc[i,4], 'QTY': 1, 'GRADE': dfSteeType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSteeType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                        #list of parts to dataframe
+                        SteeNestDictionaryDataFrame = pd.DataFrame(data=SteeNestDictionary, index=[0])
+                        #add the parts to the overall list
+                        SteeNestWorksetDataFrame.append(SteeNestDictionaryDataFrame)
+                if bin_items:
+                    #counting number of sticks pulled
+                    num_bins += 1
+                    #estimating material usage
+                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                        bin_usage += round(bin_weight/4800000, 2)
+                    elif bin_weight/4800000 > 0.75:
+                        bin_usage += 1
+                    else:
+                        bin_usage += 0.25
+        #trying to be nice to RAM
+        solver.Clear()
+    else:
+          #there's either a fatal problem, or there's too many "good" solutions
+          print('S-Tee nesting problem does not have an optimal or feasible solution.')
+
+if SteeNestWorksetDataFrame:
+    SteePostNestDataFrame = pd.concat(SteeNestWorksetDataFrame, ignore_index=True)
+    #combining multiple quantities of the same part on the same stick
+    SteePostNestDataFrame = SteePostNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    #adding cutting instruction for cut ticket
+    SteePostNestDataFrame['SHOP NOTES'] = SteePostNestDataFrame['QTY'].apply((lambda row:(math.ceil(row/2))))
+    SteePostNestDataFrame['SHOP NOTES'] = "CUT " + SteePostNestDataFrame['SHOP NOTES'].apply(str) + " PCS @ " + SteePostNestDataFrame['LENGTH'] + " SPLIT IN HALF TO GET " + (SteePostNestDataFrame['SHOP NOTES']*2).apply(str)
+    #sorting by what stick the part is nested on
+    SteePostNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
+    #adding blank columns so output can be copy-pasted to cut ticket template
+    SteePostNestDataFrame['STOCK CODE'] = None
+    SteePostNestDataFrame['RAW MAT QTY'] = None
+    SteePostNestDataFrame['HEAT NUMBER'] = None
+    SteePostNestDataFrame['LOCATION'] = None
+    #sorting columns in correct order
+    SteePostNestDataFrame = SteePostNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
+    #save to excel file
+    SteePostNestDataFrame.to_excel(output_directory + "//" + projectName + " S-Tees Nested.xlsx", sheet_name="Sheet 1")
 
 #####NUTS AND BOLTS#####
 
@@ -950,3 +1087,4 @@ if ClampPlateNestWorksetDataFrame:
     ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
     #saving to excel file
     ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Clamp Plates Nested.xlsx", sheet_name="Sheet 1")
+
