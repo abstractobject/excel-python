@@ -93,16 +93,15 @@ if excel_file[len(excel_file)-1] == "s":
 ##Multi 21 sheet
 
 #read the excel file's first sheet, set line 1 (2nd line) as header for column names
-df = pd.read_excel(excel_file, sheet_name=0, header=1)
-#get rid of the top line of garbage
-df = df[1:]
+df = pd.read_excel(excel_file, sheet_name=0, header=[1], skiprows=[2], dtype_backend="pyarrow")
+print(df)
 
 #rename column "ITEM.1" to "QTY"
 df.rename(columns = {'ITEM.1':'QTY'}, inplace=True)
 
 #get project name
 projectName = df.loc[2]['PROJECT']
-
+print(df.dtypes)
 #####Angle order#####
 
 #filter out everyhing but angle only
@@ -139,8 +138,8 @@ dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
 #prepping data for angle nesting
 dfAngleNest = dfAngle.copy(deep=True)
 #splitting by structure, "qty req'd" is no longer relevant
-dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].str.strip())
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].astype(str).str.strip())
 #dropping assy and totat. not needed after splitting by structure
 dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
 dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
@@ -325,8 +324,8 @@ dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
 #prepping data for flat bar nesting
 dfFlatBarNest = dfFlatBar.copy(deep=True)
 #splitting by structure, "qty req'd" is no longer relevant
-dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].str.strip())
+dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].astype(str).str.strip())
 #dropping assy and totat. not needed after splitting by structure
 dfFlatBarNest = dfFlatBarNest.drop('ASSY.', axis=1)
 dfFlatBarNest = dfFlatBarNest.drop('TOTAL', axis=1)
@@ -510,8 +509,8 @@ dfMisc.to_excel(output_directory + "//" + projectName + " Misc Material.xlsx", s
 dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
 dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
 #splitting by structure, "qty req'd" is no longer relevant
-dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].str.strip())
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip())
 #dropping assy and totat. not needed after splitting by structure
 dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
 dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
@@ -644,8 +643,8 @@ if SignBracketNestWorksetDataFrame:
 dfSteeNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("s-tee*", na=False, case=False)]
 dfSteeNest = dfSteeNest[dfSteeNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
 #splitting by structure, "qty req'd" is no longer relevant
-dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].str.strip())
+dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip())
 #dropping assy and totat. not needed after splitting by structure
 dfSteeNest = dfSteeNest.drop('ASSY.', axis=1)
 dfSteeNest = dfSteeNest.drop('TOTAL', axis=1)
@@ -780,8 +779,8 @@ if SteeNestWorksetDataFrame:
 #filter out everyhing but nuts, bolts, and washers only
 dfNutsAndBolts = df[df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)].copy(deep=True)
 #explodes entries with multiple stations to one line per station
-dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].str.strip())
+dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfNutsAndBolts = dfNutsAndBolts.assign(STRUCTURES=dfNutsAndBolts['STRUCTURES'].astype(str).str.strip())
 #deleting assy and total columns to avoid confusion now structures are one per line
 dfNutsAndBolts = dfNutsAndBolts.drop('ASSY.', axis=1)
 dfNutsAndBolts = dfNutsAndBolts.drop('TOTAL', axis=1)
@@ -868,7 +867,7 @@ dfColAssyBolts['DIA'] = np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.cont
 #get a sum of bolts by type and station
 dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
-dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'] + ' | ' + dfColAssyBolts['STRUCTURES']
+dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'].astype(str) + ' | ' + dfColAssyBolts['STRUCTURES'].astype(str)
 #delete unnecessary columns
 dfColAssyBolts = dfColAssyBolts.drop('DRAWING', axis=1)
 dfColAssyBolts = dfColAssyBolts.drop('SHEET', axis=1)
@@ -966,8 +965,8 @@ if dfClampPl.empty == False:
     #adding offset to clamp plate length, done by CPS name
     dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
     #splitting by structure, "qty req'd" is no longer relevant
-    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].str.strip())
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfClampPl = dfClampPl.assign(STRUCTURES=dfClampPl['STRUCTURES'].astype(str).str.strip())
     #one line per part, 10 qty = 10 lines
     dfClampPl = dfClampPl.loc[dfClampPl.index.repeat(dfClampPl['QTY'])].reset_index(drop=True)
     #setting all quantities to 1
