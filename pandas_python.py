@@ -94,14 +94,12 @@ if excel_file[len(excel_file)-1] == "s":
 
 #read the excel file's first sheet, set line 1 (2nd line) as header for column names
 df = pd.read_excel(excel_file, sheet_name=0, header=[1], skiprows=[2], dtype_backend="pyarrow")
-print(df)
 
 #rename column "ITEM.1" to "QTY"
 df.rename(columns = {'ITEM.1':'QTY'}, inplace=True)
 
 #get project name
 projectName = df.loc[2]['PROJECT']
-print(df.dtypes)
 #####Angle order#####
 
 #filter out everyhing but angle only
