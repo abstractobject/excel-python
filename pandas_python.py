@@ -1116,7 +1116,8 @@ for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER']):
     dfMainBOL.loc[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("HAND", na=False, case=False)) & (dfMainBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'WEIGHT'] = 1.5
     if (dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
         dfMainBOL = dfMainBOL[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*|hand*", na=False, case=False))]
-        dfMainBOL = dfMainBOL[~(dfMainBOL['MATERIAL DESCRIPTION'].str[-1].str.contains("[a-z]", na=False))]
+        if ~(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("hand*", na=False, case=False)).any():
+            dfMainBOL = dfMainBOL[~(((dfMainBOL['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfMainBOL['PART NUMBER'].astype(str) != dfMainBOL['MAIN NUMBER'].astype(str))))]
     else:
         dfMainBOL = dfMainBOL.iloc[:1]
     dfGalBOLWorkset.append(dfMainBOL)
@@ -1127,7 +1128,7 @@ if dfGalBOLWorkset:
     dfGalBOLWorksetOutput = pd.concat(dfGalBOLWorkset, ignore_index=True)        
     for group, dfStationBOL in dfGalBOLWorksetOutput.groupby(['PROJECT', 'STRUCTURES']): 
         #re-sorting columns in correct order
-        dfStationBOL = dfStationBOL[['QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
-        dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,4])
+        dfStationBOL = dfStationBOL[['MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
+        dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,5])
 
 writerGalvBOL.close()
