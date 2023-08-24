@@ -102,6 +102,9 @@ df.rename(columns = {'ITEM.1':'QTY'}, inplace=True)
 projectName = df.loc[2]['PROJECT']
 #####Angle order#####
 
+#adding some data sanitization. excel will not a '/' in a sheet name
+df['STRUCTURES'] = df['STRUCTURES'].str.replace('/','&')
+
 #filter out everyhing but angle only
 dfAngle = df[df['PART DESCRIPTION'].str.contains("Angle*", na=False, case=False)]
 #filter out specifically flat bar. some slipped through that were 
