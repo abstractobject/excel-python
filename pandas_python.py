@@ -818,7 +818,7 @@ dfShopBolts2['DIA'] = np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains
 #get a sum of bolts by type and station
 dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
-dfShopBolts2['STRUCTURES'] = dfShopBolts2['DRAWING'] + ' | ' + dfShopBolts2['STRUCTURES']
+dfShopBolts2['STRUCTURES'] = dfShopBolts2['DRAWING'].astype(str) + ' | ' + dfShopBolts2['STRUCTURES'].astype(str)
 #delete unnecessary columns
 dfShopBolts2 = dfShopBolts2.drop('DRAWING', axis=1)
 dfShopBolts2 = dfShopBolts2.drop('SHEET', axis=1)
@@ -912,7 +912,7 @@ dfFieldBolts['DIA'] = np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains
                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
 dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
-dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'] + ' | ' + dfFieldBolts['STRUCTURES']
+dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'].astype(str) + ' | ' + dfFieldBolts['STRUCTURES'].astype(str)
 #delete unnecessary columns
 dfFieldBolts = dfFieldBolts.drop('DRAWING', axis=1)
 dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
@@ -1085,3 +1085,24 @@ if ClampPlateNestWorksetDataFrame:
     #saving to excel file
     ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Clamp Plates Nested.xlsx", sheet_name="Sheet 1")
 
+
+#creating bill of lading for galvanizer
+dfGalvBOL = df[~df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*|stainless*|aluminum*", na=False, case=False)].copy(deep=True)
+dfGalvBOL = dfGalvBOL[~dfGalvBOL['GRADE'].str.contains("durometer*", na=False, case=False)].copy(deep=True)
+dfGalvBOL = dfGalvBOL.assign(STRUCTURES=dfGalvBOL['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+dfGalvBOL = dfGalvBOL.assign(STRUCTURES=dfGalvBOL['STRUCTURES'].astype(str).str.strip())
+dfGalvBOL = dfGalvBOL.drop('ASSY.', axis=1)
+dfGalvBOL = dfGalvBOL.drop('TOTAL', axis=1)
+dfGalvBOL = dfGalvBOL.dropna(subset=['PART NUMBER'])
+dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfGalvBOL['PART NUMBER'].str.contains("CA.*[aAB]", na=False)), 'MATERIAL DESCRIPTION'] = "COLUMN WELDMENT"
+dfGalvBOL['MATERIAL DESCRIPTION'] = dfGalvBOL['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfGalvBOL['LENGTH'].astype(str)
+dfGalvBOL.loc[dfGalvBOL['MATERIAL DESCRIPTION'].eq("PL 1/8\" x 0'-7 1/2\"") & (dfGalvBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'MATERIAL DESCRIPTION'] = "HAND HOLE COVER"
+
+writerGalvBOL = pd.ExcelWriter(output_directory + "//" + projectName + " Galv BOL.xlsx")
+         
+for group, dfStationBOL in dfGalvBOL.groupby(['PROJECT', 'STRUCTURES']): 
+    #re-sorting columns in correct order
+    dfStationBOL = dfStationBOL[['MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
+    dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,5])
+
+writerGalvBOL.close()
