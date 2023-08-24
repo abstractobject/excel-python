@@ -799,6 +799,11 @@ dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIP
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('DRAWING', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('STRUCTURES', axis=1)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('WIDTH.1', axis=1)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('LENGTH.1', axis=1)
+#deleting washer and nut grades because our drafters don't care they're wrong
+dfNutsAndBoltsVerif.loc[dfNutsAndBoltsVerif['PART DESCRIPTION'] == 'Washer', 'GRADE'] = ' '
+dfNutsAndBoltsVerif.loc[dfNutsAndBoltsVerif['PART DESCRIPTION'] == 'Nut', 'GRADE'] = ' '
 #only one row per type of bolt
 dfNutsAndBoltsVerif['GRADE'] = dfNutsAndBoltsVerif['GRADE'].fillna("N/A")
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.groupby(['PROJECT','MATERIAL DESCRIPTION','GRADE'], dropna=False).sum(numeric_only=True).reset_index()
