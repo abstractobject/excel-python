@@ -1103,14 +1103,31 @@ dfGalvBOL = dfGalvBOL.drop('ASSY.', axis=1)
 dfGalvBOL = dfGalvBOL.drop('TOTAL', axis=1)
 dfGalvBOL = dfGalvBOL.dropna(subset=['PART NUMBER'])
 dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfGalvBOL['PART NUMBER'].str.contains("CA.*[aAB]", na=False)), 'MATERIAL DESCRIPTION'] = "COLUMN WELDMENT"
+dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False)) & (~dfGalvBOL['PART NUMBER'].str[0:2].str.contains("bp", na=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
+dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("SB*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("SB*", na=False, case=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
+dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("TA*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfGalvBOL['PART NUMBER'].str.strip().str[-1].str.contains("[A-Z]", na=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
 dfGalvBOL['MATERIAL DESCRIPTION'] = dfGalvBOL['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfGalvBOL['LENGTH'].astype(str)
 dfGalvBOL.loc[dfGalvBOL['MATERIAL DESCRIPTION'].eq("PL 1/8\" x 0'-7 1/2\"") & (dfGalvBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'MATERIAL DESCRIPTION'] = "HAND HOLE COVER"
 
+dfGalBOLWorkset = []
+
+for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER']): 
+    dfMainBOL['WEIGHT'] = (dfMainBOL['WEIGHT'].sum()) / dfMainBOL['QTY']
+    dfMainBOL.loc[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("HAND", na=False, case=False)) & (dfMainBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'WEIGHT'] = 1.5
+    if (dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
+        dfMainBOL = dfMainBOL[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*|hand*", na=False, case=False))]
+        dfMainBOL = dfMainBOL[~(dfMainBOL['MATERIAL DESCRIPTION'].str[-1].str.contains("[a-z]", na=False))]
+    else:
+        dfMainBOL = dfMainBOL.iloc[:1]
+    dfGalBOLWorkset.append(dfMainBOL)
+
 writerGalvBOL = pd.ExcelWriter(output_directory + "//" + projectName + " Galv BOL.xlsx")
-         
-for group, dfStationBOL in dfGalvBOL.groupby(['PROJECT', 'STRUCTURES']): 
-    #re-sorting columns in correct order
-    dfStationBOL = dfStationBOL[['MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
-    dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,5])
+
+if dfGalBOLWorkset:
+    dfGalBOLWorksetOutput = pd.concat(dfGalBOLWorkset, ignore_index=True)        
+    for group, dfStationBOL in dfGalBOLWorksetOutput.groupby(['PROJECT', 'STRUCTURES']): 
+        #re-sorting columns in correct order
+        dfStationBOL = dfStationBOL[['QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
+        dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,4])
 
 writerGalvBOL.close()
