@@ -1102,11 +1102,16 @@ dfGalvBOL = dfGalvBOL.assign(STRUCTURES=dfGalvBOL['STRUCTURES'].astype(str).str.
 dfGalvBOL = dfGalvBOL.drop('ASSY.', axis=1)
 dfGalvBOL = dfGalvBOL.drop('TOTAL', axis=1)
 dfGalvBOL = dfGalvBOL.dropna(subset=['PART NUMBER'])
+#supposed to catch all column weldments and call them column weldments
 dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfGalvBOL['PART NUMBER'].str.contains("CA.*[aAB]", na=False)), 'MATERIAL DESCRIPTION'] = "COLUMN WELDMENT"
+#supposed to catch all WF parts that need to be galvanized seperately without catching dodec baseplates in that net
 dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False)) & (~dfGalvBOL['PART NUMBER'].str[0:2].str.contains("bp", na=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
+#supposed to catch all sign bracket weldments and name them instead of a main number that doesnt match to anything
 dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("SB*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("SB*", na=False, case=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
+#supposed to catch all the truss parts that need to be galvanized seperately without catching strut weldment parts
 dfGalvBOL.loc[(dfGalvBOL['MAIN NUMBER'].str.contains("TA*", na=False, case=False)) & (dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfGalvBOL['PART NUMBER'].str.strip().str[-1].str.contains("[A-Z]", na=False)), 'MAIN NUMBER'] = dfGalvBOL['PART NUMBER']
 dfGalvBOL['MATERIAL DESCRIPTION'] = dfGalvBOL['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfGalvBOL['LENGTH'].astype(str)
+#supposed to catch hand hole covers and name them accordingly
 dfGalvBOL.loc[dfGalvBOL['MATERIAL DESCRIPTION'].eq("PL 1/8\" x 0'-7 1/2\"") & (dfGalvBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'MATERIAL DESCRIPTION'] = "HAND HOLE COVER"
 
 dfGalBOLWorkset = []
