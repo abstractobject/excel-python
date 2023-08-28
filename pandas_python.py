@@ -1122,7 +1122,7 @@ for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER']):
             dfMainBOL = dfMainBOL[~(((dfMainBOL['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfMainBOL['PART NUMBER'].astype(str) != dfMainBOL['MAIN NUMBER'].astype(str))))]
    
     else:
-        dfMainBOL = dfMainBOL[(dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False))]
+        # dfMainBOL = dfMainBOL[(dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False))]
         dfMainBOL['WEIGHT'] = dfMainBOL['WEIGHT'] / dfMainBOL['QTY']
    
     dfGalBOLWorkset.append(dfMainBOL)
