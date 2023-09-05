@@ -257,39 +257,39 @@ for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION'
           print('Angle nesting problem does not have an optimal or feasible solution.')
 
         
-#saving angle nesting results        
-AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
-AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
-
 writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
+#saving angle nesting results        
+if AngleCutTicketWorksetDataFrame:
+    AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
+    AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
 
-for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
-    #sorting by BOM item number first
-    dfAngleCutTicket = dfAngleCutTicket.sort_values(by='ITEM')
-    #then by material type
-    dfAngleCutTicket = dfAngleCutTicket.sort_values(by='MATERIAL DESCRIPTION')
-    #filling out cut ticket info, stick size is 40'
-    dfAngleCutTicket['SIZE'] = "40'"
-    #adding blank column so output can be copy-pasted to cut ticket template
-    dfAngleCutTicket['INVENTORY ID'] = None
-    #re-sorting columns in correct order
-    dfAngleCutTicket = dfAngleCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
-    #adding to excel file, tab name is "sheet name | station"
-    dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
 
-#new excel file
-writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
-AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
-#deleting unnessary/irrelevant columns
-AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
-AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
-#combing by material type
-AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-AnglePoseNestDataFrameSUM.to_excel(writer)
-#saving excel file
-writer.close()
+    for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+        #sorting by BOM item number first
+        dfAngleCutTicket = dfAngleCutTicket.sort_values(by='ITEM')
+        #then by material type
+        dfAngleCutTicket = dfAngleCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+        #filling out cut ticket info, stick size is 40'
+        dfAngleCutTicket['SIZE'] = "40'"
+        #adding blank column so output can be copy-pasted to cut ticket template
+        dfAngleCutTicket['INVENTORY ID'] = None
+        #re-sorting columns in correct order
+        dfAngleCutTicket = dfAngleCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+        #adding to excel file, tab name is "sheet name | station"
+        dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
 
+    #new excel file
+    writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+    AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
+    AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+    #deleting unnessary/irrelevant columns
+    AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
+    AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
+    #combing by material type
+    AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+    AnglePoseNestDataFrameSUM.to_excel(writer)
+    #saving excel file
+    writer.close()
 #####Flat Bar order#####
 
 #filter out everything but flat bar only
@@ -476,14 +476,15 @@ FlatBarPostNestDataFrameSUM.to_excel(writer)
 writer.close()
 
 #combined anglematic nested order
-dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
-dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
-#adding blank column so heat numbers can be filled in by Shellie
-dfAnglematicNested['HEAT #'] = None
-#deleting unnessary column
-dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
-#saving to excel file
-dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+if AngleCutTicketWorksetDataFrame:
+    dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
+    dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
+    #adding blank column so heat numbers can be filled in by Shellie
+    dfAnglematicNested['HEAT #'] = None
+    #deleting unnessary column
+    dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
+    #saving to excel file
+    dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 #Combined Anglematic Order#
 
@@ -1119,10 +1120,14 @@ dfGalBOLWorkset = []
 for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER']): 
 
     if (dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
+        #make weight of each part of the weldment the weight of the sum of all parts
         dfMainBOL['WEIGHT'] = (dfMainBOL['WEIGHT'].sum()) / dfMainBOL['QTY']
+        #supposed to catch hand hole covers and change the weight to 1 qty
         dfMainBOL.loc[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("HAND", na=False, case=False)) & (dfMainBOL['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'WEIGHT'] = 1.5
+        #drops all lines that do not contain "weldment" or "hand"
         dfMainBOL = dfMainBOL[(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("weldment*|hand*", na=False, case=False))]
         
+        #if there's no hand hole cover, drop any line that contains "column weldment" but part number does not match main number
         if ~(dfMainBOL['MATERIAL DESCRIPTION'].str.contains("hand*", na=False, case=False)).any():
             dfMainBOL = dfMainBOL[~(((dfMainBOL['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfMainBOL['PART NUMBER'].astype(str) != dfMainBOL['MAIN NUMBER'].astype(str))))]
    
@@ -1142,3 +1147,58 @@ if dfGalBOLWorkset:
         dfStationBOL.to_excel(writerGalvBOL, sheet_name=dfStationBOL.iloc[0,5])
 
 writerGalvBOL.close()
+
+
+# dfShipTicket = df[~df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*|stainless*|aluminum*", na=False, case=False)].copy(deep=True)
+# dfShipTicket = dfShipTicket[~dfShipTicket['GRADE'].str.contains("durometer*", na=False, case=False)].copy(deep=True)
+# dfShipTicket = dfShipTicket.assign(STRUCTURES=dfShipTicket['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+# dfShipTicket = dfShipTicket.assign(STRUCTURES=dfShipTicket['STRUCTURES'].astype(str).str.strip())
+# dfShipTicket = dfShipTicket.drop('ASSY.', axis=1)
+# dfShipTicket = dfShipTicket.drop('TOTAL', axis=1)
+# dfShipTicket = dfShipTicket.dropna(subset=['PART NUMBER'])
+
+# #supposed to catch all column weldments and call them column weldments
+# dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.contains("CA.*[aAB]", na=False)), 'MATERIAL DESCRIPTION'] = "COLUMN WELDMENT"
+# #supposed to catch all sign bracket weldments and name them instead of a main number that doesnt match to anything
+# dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("SB*", na=False, case=False)) & (dfShipTicket['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfShipTicket['PART NUMBER'].str.contains("SB*", na=False, case=False)), 'MAIN NUMBER'] = dfShipTicket['PART NUMBER']
+# dfShipTicket['MATERIAL DESCRIPTION'] = dfShipTicket['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfShipTicket['LENGTH'].astype(str)
+
+# dfShipTicketWorkset = []
+
+# for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER']): 
+
+#     if (dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
+#         #make weight of each part of the weldment the weight of the sum of all parts
+#         dfShip['WEIGHT'] = (dfShip['WEIGHT'].sum()) / dfShip['QTY']
+#         #supposed to catch hand hole covers and change the weight to 1 qty
+#         dfShip.loc[(dfShip['MATERIAL DESCRIPTION'].str.contains("HAND", na=False, case=False)) & (dfShip['PART NUMBER'].str.contains("CA*c*", na=False, case=False)), 'WEIGHT'] = 1.5
+#         #drops all lines that do not contain "weldment" or "hand"
+#         dfShip = dfShip[(dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*|hand*", na=False, case=False))]
+        
+#         #if there's no hand hole cover, drop any line that contains "column weldment" but part number does not match main number
+#         if ~(dfShip['MATERIAL DESCRIPTION'].str.contains("hand*", na=False, case=False)).any():
+#             dfShip = dfShip[~(((dfShip['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfShip['PART NUMBER'].astype(str) != dfShip['MAIN NUMBER'].astype(str))))]
+    
+#     elif (dfShip['MAIN NUMBER'].str.contains("TA*", na=False, case=False)).any():
+#         #FIXME NEEDS TO MAKE TRUSS ASSEMBLIES
+#         dfShip = dfShip[(dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*|hand*", na=False, case=False))]
+
+#     else:
+#         dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
+   
+#     dfShipTicketWorkset.append(dfShip)
+
+# writerShipTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Shipping Ticket.xlsx")
+
+# if dfShipTicketWorkset:
+#     dfShipTicketWorksetOutput = pd.concat(dfShipTicketWorkset, ignore_index=True)        
+#     dfShipTicketWorksetOutput = dfShipTicketWorksetOutput[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
+#     for group, dfStationBOL in dfShipTicketWorksetOutput.groupby(['PROJECT', 'STRUCTURES']): 
+#         for group, dfFieldBoltStation in dfFieldBolts.groupby(['PROJECT', 'STRUCTURES']):
+#             # print(dfShipTicketWorksetOutput)
+#             if dfFieldBoltStation['STRUCTURES'].str.contains(dfShipTicketWorksetOutput.iloc[0,6], na=False, case=False).any():
+#                 dfShipTicketWorksetOutput.append(dfFieldBoltStation)
+#         #re-sorting columns in correct order
+#         dfShipTicketWorksetOutput.to_excel(writerGalvBOL, sheet_name=dfShipTicketWorksetOutput.iloc[0,6])
+
+# writerShipTicket.close()
