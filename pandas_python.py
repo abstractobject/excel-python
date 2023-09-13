@@ -1205,7 +1205,7 @@ if dfShipTicketWorkset:
             # print(dfFieldBoltStation['STRUCTURES'].str)
 
             # if dfStationBOL.iloc[0,6] in dfFieldBoltStation['STRUCTURES']:
-            if dfFieldBoltStation['STRUCTURES'].str.contains(dfStationBOL.iloc[0,6], na=False, case=False):
+            if dfFieldBoltStation['STRUCTURES'].str.contains(dfStationBOL.iloc[0,6], na=False, case=False).any():
                 dfStationBOL.append(dfFieldBoltStation)
                 print('BANG')
         #re-sorting columns in correct order
