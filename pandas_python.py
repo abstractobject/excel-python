@@ -305,7 +305,7 @@ dfFlatBarSum['SUM'] = dfFlatBarSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.
 #add all of each material together
 dfFlatBarGroup= dfFlatBarSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
 #delete the irrelevant columns that also got summed
-dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
+# dfFlatBarGroup = dfFlatBarGroup.drop('REV', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('ITEM', axis=1)
 dfFlatBarGroup = dfFlatBarGroup.drop('WEIGHT', axis=1)
 #add STOCK column that divides sum by 240
