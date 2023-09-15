@@ -921,9 +921,7 @@ dfFieldBolts['DIA'] = np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains
                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
 dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'DIA', 'PART DESCRIPTION'], inplace=True)
 #add sheet name to station name column'
-dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'].astype(str) + ' | ' + dfFieldBolts['STRUCTURES'].astype(str)
 #delete unnecessary columns
-dfFieldBolts = dfFieldBolts.drop('DRAWING', axis=1)
 dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
 dfFieldBolts = dfFieldBolts.drop('MAIN NUMBER', axis=1)
 dfFieldBolts = dfFieldBolts.drop('PART NUMBER', axis=1)
@@ -952,6 +950,8 @@ dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
         .reset_index(drop=True))
 #adding last line back on, not sure why it gets deleted
 dfFieldBolts3 = pd.concat([dfFieldBolts3, dfFieldBolts.tail(1)], ignore_index=True)
+dfFieldBolts3['STRUCTURES'] = dfFieldBolts3['DRAWING'].astype(str) + ' | ' + dfFieldBolts3['STRUCTURES'].astype(str)
+dfFieldBolts3 = dfFieldBolts3.drop('DRAWING', axis=1)
 #saving to excel file
 dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 
@@ -1160,12 +1160,9 @@ dfShipTicket = dfShipTicket.dropna(subset=['PART NUMBER'])
 #supposed to catch all column weldments and call them column weldments
 dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.contains("CA.*[aAB]", na=False)), 'MATERIAL DESCRIPTION'] = "COLUMN WELDMENT"
 dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.contains("CA.*a", na=False)) & (dfShipTicket['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShipTicket['PART DESCRIPTION'].str.contains("Plate", na=False, case=False)), 'PART NUMBER'] = dfShipTicket['MAIN NUMBER'] + "A"
-# dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*[0-9]", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.contains("CA.*[a]", na=False)), 'PART NUMBER'] = dfShipTicket['MAIN NUMBER']
-# dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfShipTicket['MAIN NUMBER'].str[-1].str.contains("[0-9]", na=False)) & (dfShipTicket['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False)) & (~dfShipTicket['PART NUMBER'].str[0:2].str.contains("bp", na=False)), 'MAIN NUMBER'] = dfShipTicket['PART NUMBER']
 #supposed to catch all sign bracket weldments and name them instead of a main number that doesnt match to anything
 dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("SB*", na=False, case=False)) & (dfShipTicket['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfShipTicket['PART NUMBER'].str.contains("SB*", na=False, case=False)), 'MAIN NUMBER'] = dfShipTicket['PART NUMBER']
 dfShipTicket['MATERIAL DESCRIPTION'] = dfShipTicket['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfShipTicket['LENGTH'].astype(str)
-# dfShipTicket.to_excel(output_directory + "//" + projectName + " debug shipping ticket.xlsx", sheet_name="Sheet 1")
 
 dfShipTicketWorkset = []
 
@@ -1194,21 +1191,14 @@ if dfShipTicketWorkset:
     dfShipTicketWorksetOutput = pd.concat(dfShipTicketWorkset, ignore_index=True)
     dfShipTicketWorksetOutput = dfShipTicketWorksetOutput[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
     for group, dfStationBOL in dfShipTicketWorksetOutput.groupby(['PROJECT', 'STRUCTURES']): 
-        # dfStationBOL.to_excel(writerShipTicket, sheet_name=dfStationBOL.iloc[0,6])
-        for group, dfFieldBoltStation in dfFieldBolts3.groupby(['PROJECT', 'STRUCTURES']):
-            #we don't want the sheet name, just the station name.
-            dfFieldBoltStation['STRUCTURES'] = dfFieldBoltStation['STRUCTURES'].str.split('|').str[-1].str.strip()
+       
+        for group, dfFieldBoltStation in dfFieldBolts.groupby(['PROJECT', 'STRUCTURES']):
             dfFieldBoltStation.rename(columns = {'ORDER':'QTY'}, inplace=True)
             dfFieldBoltStation = dfFieldBoltStation.drop('USE', axis=1)
-            # print(dfFieldBoltStation)
-            # print(dfStationBOL.iloc[0,6])
-            # print(dfFieldBoltStation['STRUCTURES'].str)
+           
+            if dfFieldBoltStation.iloc[0,4] in dfStationBOL.iloc[0,6]:
+                dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
 
-            # if dfStationBOL.iloc[0,6] in dfFieldBoltStation['STRUCTURES']:
-            if dfFieldBoltStation['STRUCTURES'].str.contains(dfStationBOL.iloc[0,6], na=False, case=False).any():
-                dfStationBOL.append(dfFieldBoltStation)
-                print('BANG')
-        #re-sorting columns in correct order
         dfStationBOL.to_excel(writerShipTicket, sheet_name=dfStationBOL.iloc[0,6])
 
 writerShipTicket.close()
