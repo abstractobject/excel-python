@@ -443,37 +443,38 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
           #there's either a fatal problem, or there's too many "good" solutions
           print('Flat bar nesting problem does not have an optimal or feasible solution.')
 
-        
-#saving FlatBar nesting results   
-FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
-FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
 
-#each page of cut ticket being written to excel file
-for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
-    #sorting by BOM item number first
-    dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='ITEM')
-    #then by material type
-    dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='MATERIAL DESCRIPTION')
-    #filling out cut ticket info, stick size is 20'
-    dfFlatBarCutTicket['SIZE'] = "20'"
-    #adding blank column so output can be copy-pasted to cut ticket template
-    dfFlatBarCutTicket['INVENTORY ID'] = None
-    #re-sorting columns in correct order
-    dfFlatBarCutTicket = dfFlatBarCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
-    #adding to excel file, tab name is "sheet name | station"
-    dfFlatBarCutTicket.to_excel(writerCutTicket, sheet_name=dfFlatBarCutTicket.iloc[0,1] + " | " + dfFlatBarCutTicket.iloc[0,10])
+if FlatBarCutTicketWorksetDataFrame:
+    #saving FlatBar nesting results   
+    FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
+    FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
 
-#saving excel file
-writerCutTicket.close()
+    #each page of cut ticket being written to excel file
+    for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
+        #sorting by BOM item number first
+        dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='ITEM')
+        #then by material type
+        dfFlatBarCutTicket = dfFlatBarCutTicket.sort_values(by='MATERIAL DESCRIPTION')
+        #filling out cut ticket info, stick size is 20'
+        dfFlatBarCutTicket['SIZE'] = "20'"
+        #adding blank column so output can be copy-pasted to cut ticket template
+        dfFlatBarCutTicket['INVENTORY ID'] = None
+        #re-sorting columns in correct order
+        dfFlatBarCutTicket = dfFlatBarCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
+        #adding to excel file, tab name is "sheet name | station"
+        dfFlatBarCutTicket.to_excel(writerCutTicket, sheet_name=dfFlatBarCutTicket.iloc[0,1] + " | " + dfFlatBarCutTicket.iloc[0,10])
 
-#new excel file
-writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
-FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
-#combining by material type
-FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-FlatBarPostNestDataFrameSUM.to_excel(writer)
-#saving excel file
-writer.close()
+    #saving excel file
+    writerCutTicket.close()
+
+    #new excel file
+    writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
+    FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
+    #combining by material type
+    FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+    FlatBarPostNestDataFrameSUM.to_excel(writer)
+    #saving excel file
+    writer.close()
 
 #combined anglematic nested order
 if AngleCutTicketWorksetDataFrame:
