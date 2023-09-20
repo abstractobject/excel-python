@@ -258,7 +258,8 @@ for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION'
 
         
 writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
-#saving angle nesting results        
+#saving angle nesting results 
+AnglePoseNestDataFrameSUM = None       
 if AngleCutTicketWorksetDataFrame:
     AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
     AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
@@ -443,7 +444,7 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
           #there's either a fatal problem, or there's too many "good" solutions
           print('Flat bar nesting problem does not have an optimal or feasible solution.')
 
-
+FlatBarPostNestDataFrameSUM = None
 if FlatBarCutTicketWorksetDataFrame:
     #saving FlatBar nesting results   
     FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
