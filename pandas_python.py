@@ -471,6 +471,9 @@ if FlatBarCutTicketWorksetDataFrame:
     #new excel file
     writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
     FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
+    #deleting unnessary/irrelevant columns
+    FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('STRUCTURES', axis=1)
+    FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('DRAWING', axis=1)
     #combining by material type
     FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
     FlatBarPostNestDataFrameSUM.to_excel(writer)
@@ -482,20 +485,16 @@ if AnglePoseNestDataFrameSUM is not None and FlatBarPostNestDataFrameSUM is not 
     
     dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
     dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
-    #deleting unnessary column
-    dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
     #saving to excel file
     dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 elif AnglePoseNestDataFrameSUM is not None:
     
-    AnglePoseNestDataFrameSUM = AnglePoseNestDataFrameSUM.drop('DRAWING', axis=1)
     #saving to excel file
     AnglePoseNestDataFrameSUM.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 elif FlatBarPostNestDataFrameSUM is not None:
     
-    FlatBarPostNestDataFrameSUM = FlatBarPostNestDataFrameSUM.drop('DRAWING', axis=1)
     #saving to excel file
     FlatBarPostNestDataFrameSUM.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
