@@ -477,13 +477,26 @@ if FlatBarCutTicketWorksetDataFrame:
     writer.close()
 
 #combined anglematic nested order
-if AngleCutTicketWorksetDataFrame:
+if AnglePoseNestDataFrameSUM is not None and FlatBarPostNestDataFrameSUM is not None:
+    
     dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
     dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
     #deleting unnessary column
     dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
     #saving to excel file
     dfAnglematicNested.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+
+elif AnglePoseNestDataFrameSUM is not None:
+    
+    AnglePoseNestDataFrameSUM = AnglePoseNestDataFrameSUM.drop('DRAWING', axis=1)
+    #saving to excel file
+    AnglePoseNestDataFrameSUM.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
+
+elif FlatBarPostNestDataFrameSUM is not None:
+    
+    FlatBarPostNestDataFrameSUM = FlatBarPostNestDataFrameSUM.drop('DRAWING', axis=1)
+    #saving to excel file
+    FlatBarPostNestDataFrameSUM.to_excel(output_directory + "//" + projectName + " Anglematic Order Nested.xlsx", sheet_name="Sheet 1")
 
 #Combined Anglematic Order#
 
