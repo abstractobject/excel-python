@@ -280,13 +280,13 @@ if AngleCutTicketWorksetDataFrame:
 
     #new excel file
     writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
-    AnglePoseNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-    AnglePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+    AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
+    AnglePostNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
     #deleting unnessary/irrelevant columns
-    AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('STRUCTURES', axis=1)
-    AnglePoseNestDataFrame = AnglePoseNestDataFrame.drop('DRAWING', axis=1)
+    AnglePostNestDataFrame = AnglePostNestDataFrame.drop('STRUCTURES', axis=1)
+    AnglePostNestDataFrame = AnglePostNestDataFrame.drop('DRAWING', axis=1)
     #combing by material type
-    AnglePoseNestDataFrameSUM = AnglePoseNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
+    AnglePoseNestDataFrameSUM = AnglePostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
     AnglePoseNestDataFrameSUM.to_excel(writer)
     #saving excel file
     writer.close()
@@ -480,8 +480,6 @@ if FlatBarCutTicketWorksetDataFrame:
 if AngleCutTicketWorksetDataFrame:
     dfAnglematicNestedInput = [AnglePoseNestDataFrameSUM,FlatBarPostNestDataFrameSUM]
     dfAnglematicNested = pd.concat(dfAnglematicNestedInput)
-    #adding blank column so heat numbers can be filled in by Shellie
-    dfAnglematicNested['HEAT #'] = None
     #deleting unnessary column
     dfAnglematicNested = dfAnglematicNested.drop('DRAWING', axis=1)
     #saving to excel file
