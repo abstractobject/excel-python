@@ -9,6 +9,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
 from ortools.linear_solver import pywraplp
+from fractions import Fraction
 
 #required before we can ask for input file
 root = tk.Tk()
@@ -1161,8 +1162,7 @@ if dfGalBOLWorkset:
 writerGalvBOL.close()
 
 
-dfShipTicket = df[~df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*|stainless*|aluminum*", na=False, case=False)].copy(deep=True)
-dfShipTicket = dfShipTicket[~dfShipTicket['GRADE'].str.contains("durometer*", na=False, case=False)].copy(deep=True)
+dfShipTicket = df[~df['PART DESCRIPTION'].str.contains("nut*|bolt*|washer*", na=False, case=False)].copy(deep=True)
 dfShipTicket = dfShipTicket.assign(STRUCTURES=dfShipTicket['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
 dfShipTicket = dfShipTicket.assign(STRUCTURES=dfShipTicket['STRUCTURES'].astype(str).str.strip())
 dfShipTicket = dfShipTicket.drop('ASSY.', axis=1)
@@ -1174,6 +1174,7 @@ dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case
 dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("CA*", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.contains("CA.*a", na=False)) & (dfShipTicket['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShipTicket['PART DESCRIPTION'].str.contains("Plate", na=False, case=False)), 'PART NUMBER'] = dfShipTicket['MAIN NUMBER'] + "A"
 #supposed to catch all sign bracket weldments and name them instead of a main number that doesnt match to anything
 dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("SB*", na=False, case=False)) & (dfShipTicket['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfShipTicket['PART NUMBER'].str.contains("SB*", na=False, case=False)), 'MAIN NUMBER'] = dfShipTicket['PART NUMBER']
+dfShipTicket.loc[(dfShipTicket['MAIN NUMBER'].str.contains("TA*", na=False, case=False)) & (dfShipTicket['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("STRUT*", na=False, case=False)), 'MAIN NUMBER'] = dfShipTicket['PART NUMBER']
 dfShipTicket['MATERIAL DESCRIPTION'] = dfShipTicket['MATERIAL DESCRIPTION'].astype(str) + ' x ' + dfShipTicket['LENGTH'].astype(str)
 
 dfShipTicketWorkset = []
@@ -1183,7 +1184,7 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
     if (dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
         #make weight of each part of the weldment the weight of the sum of all parts
         dfShip['WEIGHT'] = (dfShip['WEIGHT'].sum()) / dfShip['QTY']
-        #drops all lines that do not contain "weldment" or "hand"
+        #drops all lines that do not contain "weldment"
         dfShip = dfShip[(dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False))]
         #if there's no hand hole cover, drop any line that contains "column weldment" but part number does not match main number
         if (dfShip['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False)).any():
@@ -1191,6 +1192,20 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
     
     elif (dfShip['MAIN NUMBER'].str.contains("CA.*[A-Z]", na=False, case=False)).any():
         dfShip = dfShip[(((dfShip['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfShip['PART NUMBER'].str.contains("CA.*A", na=False))))]
+    
+    elif (dfShip['MAIN NUMBER'].str.contains("TA*", na=False, case=False)).any():
+        # dfShip = dfShip[(dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShipTicket['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.strip().str[-2].str.contains(".S|AR?", na=False))]
+        dfShip = dfShip[(dfShip['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShip['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("A|AR|S", na=False))]
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("AR?", na=False)), 'MATERIAL DESCRIPTION'] = "TRUSS ASSY x " + dfShip['LENGTH'].astype(str) + ' x XX" SQ'
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("L*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE ANGLE x " + dfShip['LENGTH'].astype(str)
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("FB*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("PL*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
+        dfShip.loc[(dfShip['MATERIAL DESCRIPTION'].str.contains("TRUSS ASSY*", na=False, case=False)), 'WEIGHT'] = ((((dfShip['WEIGHT']*4)*1.26) + (dfShip['WEIGHT']*4)) * 0.06) + (dfShip['WEIGHT']*4) + ((dfShip['WEIGHT']*4)*1.26) + 400 
+        dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
+
+    elif (dfShip['MAIN NUMBER'].str.contains("CPS*", na=False, case=False)).any():
+        dfShip['OFFSET'] = dfShip['PART NUMBER'].str.strip().str[-2:].astype(int)
+        dfShip.loc[dfShip['PART NUMBER'].str.contains("CPS*", na=False, case=False), 'MATERIAL DESCRIPTION'] = "CLAMP PLATE, " + str(Fraction(int(dfShip['OFFSET']),16)) + '" OFFSET'
 
     else:
         dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
@@ -1210,7 +1225,8 @@ if dfShipTicketWorkset:
            
             if dfFieldBoltStation.iloc[0,4] in dfStationBOL.iloc[0,6]:
                 dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
-
+        dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
+        dfStationBOL = dfStationBOL[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
         dfStationBOL.to_excel(writerShipTicket, sheet_name=dfStationBOL.iloc[0,6])
 
 writerShipTicket.close()
