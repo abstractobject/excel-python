@@ -972,7 +972,8 @@ dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hard
 #####Misc Hardware#####
 
 #filter out everyhing already covered
-dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pipe*|tube*|screw*|bolt*|washer*|nut*|weld*", na=False, case=False)]
+dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pipe*|tube*|screw*|bolt*|washer*|nut*|weld*|s-tee*", na=False, case=False)]
+dfRemain = dfRemain.dropna(subset=['MATERIAL DESCRIPTION'])
 #sort by column MATERIAL DESCRIPTION
 dfRemain = dfRemain.sort_values('MATERIAL DESCRIPTION')
 #save to new excel file
