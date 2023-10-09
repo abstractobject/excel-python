@@ -809,6 +809,8 @@ dfNutsAndBoltsVerif = dfNutsAndBolts.copy(deep=True)
 #deleting 3/8" dia and 1/2" dia hardware. we don't need to order these for verification
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('1/2"ø', na=False, case=False)].copy(deep=True)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('3/8"ø', na=False, case=False)].copy(deep=True)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('USS', na=False, case=False)].copy(deep=True)
+dfNutsAndBoltsVerif = dfNutsAndBoltsVerif[~dfNutsAndBoltsVerif['MATERIAL DESCRIPTION'].str.contains('NEOPRENE', na=False, case=False)].copy(deep=True)
 #delete irrelevant columns
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('DRAWING', axis=1)
 dfNutsAndBoltsVerif = dfNutsAndBoltsVerif.drop('QTY', axis=1)
