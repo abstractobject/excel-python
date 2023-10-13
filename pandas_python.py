@@ -1198,11 +1198,13 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
     
     elif (dfShip['MAIN NUMBER'].str.contains("TA*", na=False, case=False)).any():
         # dfShip = dfShip[(dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShipTicket['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.strip().str[-2].str.contains(".S|AR?", na=False))]
-        dfShip = dfShip[(dfShip['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShip['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("A|AR|S", na=False))]
+        dfShip = dfShip[(dfShip['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShip['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("A|AR|S|T", na=False))]
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("AR?", na=False)), 'MATERIAL DESCRIPTION'] = "TRUSS ASSY x " + dfShip['LENGTH'].astype(str) + ' x XX" SQ'
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("L*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE ANGLE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("FB*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("PL*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("FB*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
+        dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShipTicket['MATERIAL DESCRIPTION'].str.contains("PL*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['MATERIAL DESCRIPTION'].str.contains("TRUSS ASSY*", na=False, case=False)), 'WEIGHT'] = ((((dfShip['WEIGHT']*4)*1.26) + (dfShip['WEIGHT']*4)) * 0.06) + (dfShip['WEIGHT']*4) + ((dfShip['WEIGHT']*4)*1.26) + 400 
         dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
 
