@@ -1230,7 +1230,7 @@ if dfShipTicketWorkset:
            
             if dfFieldBoltStation.iloc[0,4] in dfStationBOL.iloc[0,6]:
                 dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
-        dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
+        # dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
         dfStationBOL = dfStationBOL[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
         dfStationBOL.to_excel(writerShipTicket, sheet_name=dfStationBOL.iloc[0,6])
 
