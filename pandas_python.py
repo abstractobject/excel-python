@@ -1149,7 +1149,7 @@ for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
    
     else:
         # dfMainBOL = dfMainBOL[(dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False))]
-        dfMainBOL['WEIGHT'] = dfMainBOL['WEIGHT'] / dfMainBOL['QTY']
+        dfMainBOL['WEIGHT'] = dfMainBOL['WEIGHT'].copy(deep=True) / dfMainBOL['QTY'].copy(deep=True)
    
     dfGalBOLWorkset.append(dfMainBOL)
 
@@ -1206,14 +1206,14 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShip['MATERIAL DESCRIPTION'].str.contains("FB*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShip['MATERIAL DESCRIPTION'].str.contains("PL*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['MATERIAL DESCRIPTION'].str.contains("TRUSS ASSY*", na=False, case=False)), 'WEIGHT'] = ((((dfShip['WEIGHT']*4)*1.26) + (dfShip['WEIGHT']*4)) * 0.06) + (dfShip['WEIGHT']*4) + ((dfShip['WEIGHT']*4)*1.26) + 400 
-        dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
+        dfShip['WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
 
     elif (dfShip['MAIN NUMBER'].str.contains("CPS*", na=False, case=False)).any():
         dfShip['OFFSET'] = dfShip['PART NUMBER'].str.strip().str[-2:].astype(int)
         dfShip.loc[dfShip['PART NUMBER'].str.contains("CPS*", na=False, case=False), 'MATERIAL DESCRIPTION'] = "CLAMP PLATE, " + str(Fraction(int(dfShip['OFFSET']),16)) + '" OFFSET'
 
     else:
-        dfShip['WEIGHT'] = dfShip['WEIGHT'] / dfShip['QTY']
+        dfShip['WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
    
     dfShipTicketWorkset.append(dfShip)
 
@@ -1221,7 +1221,7 @@ writerShipTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Ship
 
 if dfShipTicketWorkset:
     dfShipTicketWorksetOutput = pd.concat(dfShipTicketWorkset, ignore_index=True)
-    dfShipTicketWorksetOutput = dfShipTicketWorksetOutput[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
+    dfShipTicketWorksetOutput = dfShipTicketWorksetOutput[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES', 'GRADE']]
     for group, dfStationBOL in dfShipTicketWorksetOutput.groupby(['PROJECT', 'STRUCTURES']): 
        
         for group, dfFieldBoltStation in dfFieldBolts.groupby(['PROJECT', 'STRUCTURES']):
@@ -1230,7 +1230,7 @@ if dfShipTicketWorkset:
            
             if dfFieldBoltStation.iloc[0,4] in dfStationBOL.iloc[0,6]:
                 dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
-        # dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
+        dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
         dfStationBOL = dfStationBOL[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
         dfStationBOL.to_excel(writerShipTicket, sheet_name=dfStationBOL.iloc[0,6])
 
