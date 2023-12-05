@@ -234,9 +234,9 @@ for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION'
                     # counting number of sticks pulled
                     num_bins += 1
                     # estimating material usage
-                    if bin_weight / 4800000 < 0.75 and bin_weight / 4800000 > 0.25:
+                    if bin_weight < 3600000 and bin_weight > 1200000:
                         bin_usage += round(bin_weight / 4800000, 2)
-                    elif bin_weight / 4800000 > 0.75:
+                    elif bin_weight > 3600000:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
@@ -423,9 +423,9 @@ for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPT
                     #counting number of sticks pulled
                     num_bins += 1
                     #estimating material usage
-                    if bin_weight/2400000 < 0.85 and bin_weight/2400000 > 0.25:
+                    if bin_weight < 1800000 and bin_weight > 600000:
                         bin_usage += round(bin_weight/2400000, 2)
-                    elif bin_weight/2400000 > 0.85:
+                    elif bin_weight > 1800000:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
@@ -622,9 +622,9 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
                     # Counting number of sticks pulled
                     num_bins += 1
                     # Estimating material usage
-                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                    if bin_weight < 3600000 and bin_weight > 1200000:
                         bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight/4800000 > 0.75:
+                    elif bin_weight > 3600000:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
@@ -757,9 +757,9 @@ for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):
                     #counting number of sticks pulled
                     num_bins += 1
                     #estimating material usage
-                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
+                    if bin_weight < 3600000 and bin_weight > 1200000:
                         bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight/4800000 > 0.75:
+                    elif bin_weight > 3600000:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
@@ -1087,9 +1087,9 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
                     #counting number of sticks pulled
                     num_bins += 1
                     #estimating material usage
-                    if bin_weight/2400000 < 0.75 and bin_weight/2400000 > 0.25:
+                    if bin_weight < 1800000 and bin_weight > 600000:
                         bin_usage += round(bin_weight/2400000, 2)
-                    elif bin_weight/2400000 > 0.75:
+                    elif bin_weight > 1800000:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
