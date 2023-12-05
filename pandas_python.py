@@ -1,7 +1,6 @@
 import pandas as pd
 import tkinter as tk
 import numpy as np
-import re
 import pyexcel as p
 import sys
 import math
