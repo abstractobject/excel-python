@@ -748,7 +748,7 @@ for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):
                         bin_items.append(i)
                         #stick usage
                         bin_weight += data['weights'][i]
-                        SteeNestDictionary = {'PROJECT': projectName, 'PART': dfSteeType.iloc[i,4], 'QTY': 1, 'GRADE': dfSteeType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSteeType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                        SteeNestDictionary = {'PROJECT': projectName, 'PART': dfSteeType.iloc[i,4], 'QTY': 1, 'GRADE': dfSteeType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSteeType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
                         #list of parts to dataframe
                         SteeNestDictionaryDataFrame = pd.DataFrame(data=SteeNestDictionary, index=[0])
                         #add the parts to the overall list
@@ -770,7 +770,7 @@ for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):
 if SteeNestWorksetDataFrame:
     SteePostNestDataFrame = pd.concat(SteeNestWorksetDataFrame, ignore_index=True)
     #combining multiple quantities of the same part on the same stick
-    SteePostNestDataFrame = SteePostNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    SteePostNestDataFrame = SteePostNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
     #adding cutting instruction for cut ticket
     SteePostNestDataFrame['SHOP NOTES'] = SteePostNestDataFrame['QTY'].apply((lambda row:(math.ceil(row/2))))
     SteePostNestDataFrame['SHOP NOTES'] = "CUT " + SteePostNestDataFrame['SHOP NOTES'].apply(str) + " PCS @ " + SteePostNestDataFrame['LENGTH'] + " SPLIT IN HALF TO GET " + (SteePostNestDataFrame['SHOP NOTES']*2).apply(str)
@@ -782,7 +782,7 @@ if SteeNestWorksetDataFrame:
     SteePostNestDataFrame['HEAT NUMBER'] = None
     SteePostNestDataFrame['LOCATION'] = None
     #sorting columns in correct order
-    SteePostNestDataFrame = SteePostNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
+    SteePostNestDataFrame = SteePostNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK']]
     #save to excel file
     SteePostNestDataFrame.to_excel(output_directory + "//" + projectName + " S-Tees Nested.xlsx", sheet_name="Sheet 1")
 
