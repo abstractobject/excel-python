@@ -10,6 +10,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from ortools.linear_solver import pywraplp
 from fractions import Fraction
+from ortools.sat.python import cp_model
 
 #required before we can ask for input file
 root = tk.Tk()
@@ -164,98 +165,96 @@ dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*10000)
 dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
 #saving to excel file
 dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
-
 #prepping excel sheet for angle order after nesting
+
 
 AngleCutTicketWorksetDataFrame = []
 AngleNestWorksetDataFrame = []
 
 def create_data_model_angle():
-      data = {}
-      #part lengths
-      data['weights'] = dfAngleType['LENGTH.1'].values.tolist()
-      data['items'] = list(range(len(data['weights'])))
-      data['bins'] = data['items']
-      #stick size
-      data['bin_capacity'] = 4800000
-      data['material'] = dfAngleType.iloc[0,5]
-      data['structures'] = dfAngleType.iloc[0,8]
-      data['drawing'] = dfAngleType.iloc[0,2]
-      return data
+    data = {}
+    # part lengths
+    data['weights'] = dfAngleType['LENGTH.1'].astype(int).values.tolist()
+    data['items'] = list(range(len(data['weights'])))
+    data['bins'] = data['items']
+    # stick size
+    data['bin_capacity'] = 4800000
+    data['material'] = dfAngleType.iloc[0, 5]
+    data['structures'] = dfAngleType.iloc[0, 8]
+    data['drawing'] = dfAngleType.iloc[0, 2]
+    return data
 
-#angle nesting fuction
-for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
-
+# angle nesting function
+for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
     data = create_data_model_angle()
 
-        # Create the mip solver with the cp-sat backend.
-    solver = pywraplp.Solver.CreateSolver('CP-SAT')
-   
-        # Variables
-        # x[i, j] = 1 if item i is packed in bin j.
+    # Create the CP-SAT model.
+    model = cp_model.CpModel()
+
+    # Variables
+    # x[i, j] = 1 if item i is packed in bin j.
     x = {}
     for i in data['items']:
         for j in data['bins']:
-            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+            x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
 
-        # y[j] = 1 if bin j is used.
+    # y[j] = 1 if bin j is used.
     y = {}
     for j in data['bins']:
-        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+        y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
 
-        # Constraints
-        # Each item must be in exactly one bin.
+    # Constraints
+    # Each item must be in exactly one bin.
     for i in data['items']:
-        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+        model.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-        # The amount packed in each bin cannot exceed its capacity.
+    # The amount packed in each bin cannot exceed its capacity.
     for j in data['bins']:
-        solver.Add(
+        model.Add(
             sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
             data['bin_capacity'])
 
-        # Objective: minimize the number of bins used.
-    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+    # Objective: minimize the number of bins used.
+    model.Minimize(sum(y[j] for j in data['bins']))
 
-    status = solver.Solve()
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
 
-    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         num_bins = 0
         bin_usage = 0
         for j in data['bins']:
-            if y[j].solution_value() == 1:
+            if solver.Value(y[j]) == 1:
                 bin_items = []
                 bin_weight = 0
                 for i in data['items']:
-                    if x[i, j].solution_value() > 0:
+                    if solver.Value(x[i, j]) > 0:
                         bin_items.append(i)
-                        #stick usage
+                        # stick usage
                         bin_weight += data['weights'][i]
                 if bin_items:
-                    #counting number of sticks pulled
+                    # counting number of sticks pulled
                     num_bins += 1
-                    #estimating material usage
-                    if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
-                        bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight/4800000 > 0.75:
+                    # estimating material usage
+                    if bin_weight / 4800000 < 0.75 and bin_weight / 4800000 > 0.25:
+                        bin_usage += round(bin_weight / 4800000, 2)
+                    elif bin_weight / 4800000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-        #make list of parts
-        AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
-        #list to dataframe
+        # make list of parts
+        AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER': num_bins, 'USAGE': bin_usage, 'STRUCTURES': data['structures']}
+        # list to dataframe
         AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
-        #add parts to overall list
+        # add parts to overall list
         AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
         dfAngleTypeSum = dfAngleType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
         dfAngleTypeSum['ORDER'] = num_bins
         dfAngleTypeSum['USAGE'] = bin_usage
         AngleCutTicketWorksetDataFrame.append(dfAngleTypeSum)
-        #trying to be nice to RAM
-        solver.Clear()
     else:
-          #there's either a fatal problem, or there's too many "good" solutions
-          print('Angle nesting problem does not have an optimal or feasible solution.')
+        # there's either a fatal problem, or there's too many "good" solutions
+        print('Angle nesting problem does not have an optimal or feasible solution.')
 
         
 writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
