@@ -613,7 +613,7 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
                         bin_items.append(i)
                         # Stick usage
                         bin_weight += data['weights'][i]
-                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
                         # List of parts to dataframe
                         SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
                         # Add the parts to the overall list
@@ -635,7 +635,7 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
 if SignBracketNestWorksetDataFrame:
     SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
     #combining multiple quantities of the same part on the same stick
-    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
     #adding cutting instruction for cut ticket
     SignBracketPoseNestDataFrame['SHOP NOTES'] = "CUT " + SignBracketPoseNestDataFrame['QTY'].apply(str) + " PCS @ " + SignBracketPoseNestDataFrame['LENGTH']
     #sorting by what stick the part is nested on
@@ -646,7 +646,7 @@ if SignBracketNestWorksetDataFrame:
     SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
     SignBracketPoseNestDataFrame['LOCATION'] = None
     #sorting columns in correct order
-    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'NESTED LENGTH', 'STICK']]
+    SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK']]
     #save to excel file
     SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Sign Brackets Nested.xlsx", sheet_name="Sheet 1")
 
