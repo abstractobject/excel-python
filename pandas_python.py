@@ -1203,14 +1203,13 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShip['MATERIAL DESCRIPTION'].str.contains("FB*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("T", na=False)) & (dfShip['MATERIAL DESCRIPTION'].str.contains("PL*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE PLATE x " + dfShip['LENGTH'].astype(str)
         dfShip.loc[(dfShip['MATERIAL DESCRIPTION'].str.contains("TRUSS ASSY*", na=False, case=False)), 'WEIGHT'] = ((((dfShip['WEIGHT']*4)*1.26) + (dfShip['WEIGHT']*4)) * 0.06) + (dfShip['WEIGHT']*4) + ((dfShip['WEIGHT']*4)*1.26) + 400 
-        dfShip['WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
+        dfShip.loc[:, 'WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
 
     elif (dfShip['MAIN NUMBER'].str.contains("CPS*", na=False, case=False)).any():
         dfShip['OFFSET'] = dfShip['PART NUMBER'].str.strip().str[-2:].astype(int)
-        dfShip.loc[dfShip['PART NUMBER'].str.contains("CPS*", na=False, case=False), 'MATERIAL DESCRIPTION'] = "CLAMP PLATE, " + str(Fraction(int(dfShip['OFFSET']),16)) + '" OFFSET'
-
+        dfShip.loc[dfShip['PART NUMBER'].str.contains("CPS*", na=False, case=False), 'MATERIAL DESCRIPTION'] = dfShip.apply(lambda row: "CLAMP PLATE, " + str(Fraction(int(row['OFFSET']),16)) + '" OFFSET', axis=1)    
     else:
-        dfShip['WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
+        dfShip.loc[:, 'WEIGHT'] = dfShip['WEIGHT'].copy(deep=True) / dfShip['QTY'].copy(deep=True)
    
     dfShipTicketWorkset.append(dfShip)
 
