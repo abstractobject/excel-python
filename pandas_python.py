@@ -546,94 +546,93 @@ dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
 #saving to excel file
 dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
 
+
 #prepping excel sheet for FlatBar order after nesting
 SignBracketCutTicketWorksetDataFrame = []
 SignBracketNestWorksetDataFrame = []
 
 def create_data_model_sign_bracket():
-      data = {}
-      #part lengths
-      data['weights'] = dfSignBracketType['LENGTH.1'].values.tolist()
-      data['items'] = list(range(len(data['weights'])))
-      data['bins'] = data['items']
-      #stick size
-      data['bin_capacity'] = 4800000
-      data['material'] = dfSignBracketType.iloc[0,7]
-      data['structures'] = dfSignBracketType.iloc[0,11]
-      data['drawing'] = dfSignBracketType.iloc[0,1]
-      return data
+    data = {}
+    #part lengths
+    data['weights'] = dfSignBracketType['LENGTH.1'].astype(int).values.tolist()
+    data['items'] = list(range(len(data['weights'])))
+    data['bins'] = data['items']
+    #stick size
+    data['bin_capacity'] = 4800000
+    data['material'] = dfSignBracketType.iloc[0,7]
+    data['structures'] = dfSignBracketType.iloc[0,11]
+    data['drawing'] = dfSignBracketType.iloc[0,1]
+    return data
 
 #angle nesting fuction
-for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
-    
-    
+for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):
     data = create_data_model_sign_bracket()
 
-        # Create the mip solver with the cp-sat backend.
-    solver = pywraplp.Solver.CreateSolver('CP-SAT')
-   
-        # Variables
-        # x[i, j] = 1 if item i is packed in bin j.
+    # Create the CP-SAT model.
+    model = cp_model.CpModel()
+
+    # Variables
+    # x[i, j] = 1 if item i is packed in bin j.
     x = {}
     for i in data['items']:
         for j in data['bins']:
-            x[(i, j)] = solver.IntVar(0, 1, 'x_%i_%i' % (i, j))
+            x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
 
-        # y[j] = 1 if bin j is used.
+    # y[j] = 1 if bin j is used.
     y = {}
     for j in data['bins']:
-        y[j] = solver.IntVar(0, 1, 'y[%i]' % j)
+        y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
 
-        # Constraints
-        # Each item must be in exactly one bin.
+    # Constraints
+    # Each item must be in exactly one bin.
     for i in data['items']:
-        solver.Add(sum(x[i, j] for j in data['bins']) == 1)
+        model.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-        # The amount packed in each bin cannot exceed its capacity.
+    # The amount packed in each bin cannot exceed its capacity.
     for j in data['bins']:
-        solver.Add(
+        model.Add(
             sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
             data['bin_capacity'])
 
-        # Objective: minimize the number of bins used.
-    solver.Minimize(solver.Sum([y[j] for j in data['bins']]))
+    # Objective: minimize the number of bins used.
+    model.Minimize(sum(y[j] for j in data['bins']))
 
-    status = solver.Solve()
+    # Create the solver and solve the model.
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
 
-    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
-    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        #zero out to start
+    # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        # Zero out to start
         num_bins = 0
         bin_usage = 0
         for j in data['bins']:
-            if y[j].solution_value() == 1:
+            if solver.Value(y[j]) == 1:
                 bin_items = []
                 bin_weight = 0
                 for i in data['items']:
-                    if x[i, j].solution_value() > 0:
+                    if solver.Value(x[i, j]) > 0:
                         bin_items.append(i)
-                        #stick usage
+                        # Stick usage
                         bin_weight += data['weights'][i]
                         SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
-                        #list of parts to dataframe
+                        # List of parts to dataframe
                         SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
-                        #add the parts to the overall list
+                        # Add the parts to the overall list
                         SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
                 if bin_items:
-                    #counting number of sticks pulled
+                    # Counting number of sticks pulled
                     num_bins += 1
-                    #estimating material usage
+                    # Estimating material usage
                     if bin_weight/4800000 < 0.75 and bin_weight/4800000 > 0.25:
                         bin_usage += round(bin_weight/4800000, 2)
                     elif bin_weight/4800000 > 0.75:
                         bin_usage += 1
                     else:
                         bin_usage += 0.25
-        #trying to be nice to RAM
-        solver.Clear()
     else:
-          #there's either a fatal problem, or there's too many "good" solutions
-          print('Sign bracket nesting problem does not have an optimal or feasible solution.')
+        # There's either a fatal problem, or there's too many "good" solutions
+        print('Sign bracket nesting problem does not have an optimal or feasible solution.')
 
 if SignBracketNestWorksetDataFrame:
     SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
