@@ -183,11 +183,12 @@ if not dfAngle.empty:
         data['bin_capacity'] = 4800000
         data['material'] = dfAngleType.iloc[0, 5]
         data['structures'] = dfAngleType.iloc[0, 8]
-        data['drawing'] = dfAngleType.iloc[0, 2]
+        data['drawing'] = dfAngleType.iloc[0, 1]
         return data
 
     # angle nesting function
     for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
+        print(dfAngleType.iloc[0, 1] + " - " + dfAngleType.iloc[0, 5] + " - " + dfAngleType.iloc[0, 8])
         data = create_data_model_angle()
 
         # Create the CP-SAT model.
@@ -220,6 +221,7 @@ if not dfAngle.empty:
         model.Minimize(sum(y[j] for j in data['bins']))
 
         solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0
         status = solver.Solve(model)
 
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
@@ -411,6 +413,7 @@ if not dfFlatBar.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -602,6 +605,7 @@ for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL 
 
     # Create the solver and solve the model.
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 30.0
     status = solver.Solve(model)
 
     # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -737,6 +741,7 @@ for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):
 
     # Create the solver and solve the model.
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 30.0
     status = solver.Solve(model)
 
     #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -1066,6 +1071,7 @@ for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTI
     model.Minimize(sum(y[j] for j in data['bins']))
 
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 30.0
     status = solver.Solve(model)
 
     #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
