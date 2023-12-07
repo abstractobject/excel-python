@@ -187,7 +187,7 @@ if not dfAngle.empty:
         return data
 
     # angle nesting function
-    for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
+    for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):# print(dfShip)
         data = create_data_model_angle()
 
         # Create the CP-SAT model.
@@ -949,7 +949,6 @@ dfFieldBolts['DIA'] = np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains
                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
 dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'DIA', 'PART DESCRIPTION'], inplace=True)
-#add sheet name to station name column'
 #delete unnecessary columns
 dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
 dfFieldBolts = dfFieldBolts.drop('MAIN NUMBER', axis=1)
@@ -1164,7 +1163,6 @@ for group, dfMainBOL in dfGalvBOL.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
             dfMainBOL = dfMainBOL[~(((dfMainBOL['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfMainBOL['PART NUMBER'].astype(str) != dfMainBOL['MAIN NUMBER'].astype(str))))]
    
     else:
-        # dfMainBOL = dfMainBOL[(dfGalvBOL['PART NUMBER'].str[-1].str.contains("[A-Z]", na=False))]
         dfMainBOL['WEIGHT'] = dfMainBOL['WEIGHT'].copy(deep=True) / dfMainBOL['QTY'].copy(deep=True)
    
     dfGalBOLWorkset.append(dfMainBOL)
@@ -1199,7 +1197,6 @@ dfShipTicket['MATERIAL DESCRIPTION'] = dfShipTicket['MATERIAL DESCRIPTION'].asty
 dfShipTicketWorkset = []
 
 for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES']): 
-    # print(dfShip)
     if (dfShip['MATERIAL DESCRIPTION'].str.contains("weldment*", na=False, case=False)).any():
         #make weight of each part of the weldment the weight of the sum of all parts
         dfShip['WEIGHT'] = (dfShip['WEIGHT'].sum()) / dfShip['QTY']
@@ -1213,7 +1210,6 @@ for group, dfShip in dfShipTicket.groupby(['PROJECT', 'MAIN NUMBER', 'STRUCTURES
         dfShip = dfShip[(((dfShip['MATERIAL DESCRIPTION'].str.contains("column weldment*", na=False, case=False))) & ((dfShip['PART NUMBER'].str.contains("CA.*A", na=False))))]
     
     elif (dfShip['MAIN NUMBER'].str.contains("TA*", na=False, case=False)).any():
-        # dfShip = dfShip[(dfGalvBOL['MAIN NUMBER'].str.strip().str[-1].str.contains("[0-9]", na=False)) & (dfGalvBOL['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShipTicket['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShipTicket['PART NUMBER'].str.strip().str[-2].str.contains(".S|AR?", na=False))]
         dfShip = dfShip[(dfShip['PART NUMBER'].str.contains("T*", na=False, case=False)) & (dfShip['GRADE'].str.contains("A572 GR 50", na=False, case=False)) & (dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("A|AR|S|T", na=False))]
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-2:].str.contains("AR?", na=False)), 'MATERIAL DESCRIPTION'] = "TRUSS ASSY x " + dfShip['LENGTH'].astype(str) + ' x XX" SQ'
         dfShip.loc[(dfShip['PART NUMBER'].str.strip().str[-1].str.contains("S", na=False)) & (dfShip['MATERIAL DESCRIPTION'].str.contains("L*", na=False)), 'MATERIAL DESCRIPTION'] = "SPLICE ANGLE x " + dfShip['LENGTH'].astype(str)
