@@ -188,7 +188,6 @@ if not dfAngle.empty:
 
     # angle nesting function
     for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
-        print(dfAngleType.iloc[0, 1] + " - " + dfAngleType.iloc[0, 5] + " - " + dfAngleType.iloc[0, 8])
         data = create_data_model_angle()
 
         # Create the CP-SAT model.
@@ -529,119 +528,120 @@ else:
 #grabbing anything that includes "w-beam" or "s-beam" in the part description and has SB in the part name
 dfSignBracketNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("w-beam*|s-beam*", na=False, case=False)]
 dfSignBracketNest = dfSignBracketNest[dfSignBracketNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
-#splitting by structure, "qty req'd" is no longer relevant
-dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip())
-#dropping assy and totat. not needed after splitting by structure
-dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
-dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
-#making length an interger, makes computer sweat less
-dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
-#adding kerf unless the part is a whole stick (should not happen on sign brackets anyways)
-dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
-#one line per part, 10 qty = 10 lines
-dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
-#setting all qty to 1
-dfSignBracketNest['QTY'] = 1
-#deleting unnecessary/irrelevant columns
-dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
-dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
-dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
-dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
-dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
-#saving to excel file
-dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
+
+if not dfSignBracketNest.empty:
+    #splitting by structure, "qty req'd" is no longer relevant
+    dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfSignBracketNest = dfSignBracketNest.assign(STRUCTURES=dfSignBracketNest['STRUCTURES'].astype(str).str.strip())
+    #dropping assy and totat. not needed after splitting by structure
+    dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
+    dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
+    #making length an interger, makes computer sweat less
+    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
+    #adding kerf unless the part is a whole stick (should not happen on sign brackets anyways)
+    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+    #one line per part, 10 qty = 10 lines
+    dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
+    #setting all qty to 1
+    dfSignBracketNest['QTY'] = 1
+    #deleting unnecessary/irrelevant columns
+    dfSignBracketNest = dfSignBracketNest.drop('WIDTH', axis=1)
+    dfSignBracketNest = dfSignBracketNest.drop('WIDTH.1', axis=1)
+    dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
+    dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
+    dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
+    #saving to excel file
+    dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
 
 
-#prepping excel sheet for FlatBar order after nesting
-SignBracketCutTicketWorksetDataFrame = []
-SignBracketNestWorksetDataFrame = []
+    #prepping excel sheet for FlatBar order after nesting
+    SignBracketCutTicketWorksetDataFrame = []
+    SignBracketNestWorksetDataFrame = []
 
-def create_data_model_sign_bracket():
-    data = {}
-    #part lengths
-    data['weights'] = dfSignBracketType['LENGTH.1'].astype(int).values.tolist()
-    data['items'] = list(range(len(data['weights'])))
-    data['bins'] = data['items']
-    #stick size
-    data['bin_capacity'] = 4800000
-    data['material'] = dfSignBracketType.iloc[0,7]
-    data['structures'] = dfSignBracketType.iloc[0,11]
-    data['drawing'] = dfSignBracketType.iloc[0,1]
-    return data
+    def create_data_model_sign_bracket():
+        data = {}
+        #part lengths
+        data['weights'] = dfSignBracketType['LENGTH.1'].astype(int).values.tolist()
+        data['items'] = list(range(len(data['weights'])))
+        data['bins'] = data['items']
+        #stick size
+        data['bin_capacity'] = 4800000
+        data['material'] = dfSignBracketType.iloc[0,7]
+        data['structures'] = dfSignBracketType.iloc[0,11]
+        data['drawing'] = dfSignBracketType.iloc[0,1]
+        return data
 
-#angle nesting fuction
-for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):
-    data = create_data_model_sign_bracket()
+    #angle nesting fuction
+    for group, dfSignBracketType in dfSignBracketNest.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):
+        data = create_data_model_sign_bracket()
 
-    # Create the CP-SAT model.
-    model = cp_model.CpModel()
+        # Create the CP-SAT model.
+        model = cp_model.CpModel()
 
-    # Variables
-    # x[i, j] = 1 if item i is packed in bin j.
-    x = {}
-    for i in data['items']:
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+        x = {}
+        for i in data['items']:
+            for j in data['bins']:
+                x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+        y = {}
         for j in data['bins']:
-            x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
+            y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
 
-    # y[j] = 1 if bin j is used.
-    y = {}
-    for j in data['bins']:
-        y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
+        # Constraints
+        # Each item must be in exactly one bin.
+        for i in data['items']:
+            model.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-    # Constraints
-    # Each item must be in exactly one bin.
-    for i in data['items']:
-        model.Add(sum(x[i, j] for j in data['bins']) == 1)
-
-    # The amount packed in each bin cannot exceed its capacity.
-    for j in data['bins']:
-        model.Add(
-            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
-            data['bin_capacity'])
-
-    # Objective: minimize the number of bins used.
-    model.Minimize(sum(y[j] for j in data['bins']))
-
-    # Create the solver and solve the model.
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 30.0
-    status = solver.Solve(model)
-
-    # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        # Zero out to start
-        num_bins = 0
-        bin_usage = 0
+        # The amount packed in each bin cannot exceed its capacity.
         for j in data['bins']:
-            if solver.Value(y[j]) == 1:
-                bin_items = []
-                bin_weight = 0
-                for i in data['items']:
-                    if solver.Value(x[i, j]) > 0:
-                        bin_items.append(i)
-                        # Stick usage
-                        bin_weight += data['weights'][i]
-                        SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
-                        # List of parts to dataframe
-                        SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
-                        # Add the parts to the overall list
-                        SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
-                if bin_items:
-                    # Counting number of sticks pulled
-                    num_bins += 1
-                    # Estimating material usage
-                    if bin_weight < 3600000 and bin_weight > 1200000:
-                        bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight > 3600000:
-                        bin_usage += 1
-                    else:
-                        bin_usage += 0.25
-    else:
-        # There's either a fatal problem, or there's too many "good" solutions
-        print('Sign bracket nesting problem does not have an optimal or feasible solution.')
+            model.Add(
+                sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+                data['bin_capacity'])
 
-if SignBracketNestWorksetDataFrame:
+        # Objective: minimize the number of bins used.
+        model.Minimize(sum(y[j] for j in data['bins']))
+
+        # Create the solver and solve the model.
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0
+        status = solver.Solve(model)
+
+        # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+            # Zero out to start
+            num_bins = 0
+            bin_usage = 0
+            for j in data['bins']:
+                if solver.Value(y[j]) == 1:
+                    bin_items = []
+                    bin_weight = 0
+                    for i in data['items']:
+                        if solver.Value(x[i, j]) > 0:
+                            bin_items.append(i)
+                            # Stick usage
+                            bin_weight += data['weights'][i]
+                            SignBracketNestDictionary = {'PROJECT': projectName, 'PART': dfSignBracketType.iloc[i,4], 'QTY': 1, 'GRADE': dfSignBracketType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSignBracketType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                            # List of parts to dataframe
+                            SignBracketNestDictionaryDataFrame = pd.DataFrame(data=SignBracketNestDictionary, index=[0])
+                            # Add the parts to the overall list
+                            SignBracketNestWorksetDataFrame.append(SignBracketNestDictionaryDataFrame)
+                    if bin_items:
+                        # Counting number of sticks pulled
+                        num_bins += 1
+                        # Estimating material usage
+                        if bin_weight < 3600000 and bin_weight > 1200000:
+                            bin_usage += round(bin_weight/4800000, 2)
+                        elif bin_weight > 3600000:
+                            bin_usage += 1
+                        else:
+                            bin_usage += 0.25
+        else:
+            # There's either a fatal problem, or there's too many "good" solutions
+            print('Sign bracket nesting problem does not have an optimal or feasible solution.')
+
     SignBracketPoseNestDataFrame = pd.concat(SignBracketNestWorksetDataFrame, ignore_index=True)
     #combining multiple quantities of the same part on the same stick
     SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
@@ -659,125 +659,129 @@ if SignBracketNestWorksetDataFrame:
     #save to excel file
     SignBracketPoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Sign Brackets Nested.xlsx", sheet_name="Sheet 1")
 
+else: 
+    print("No sign brackets found in BOM")
+
 #prepping data for s-tee nesting
 #grabbing anything that includes "w-beam" or "s-beam" in the part description and has SB in the part name
 dfSteeNest = dfMisc[dfMisc['PART DESCRIPTION'].str.contains("s-tee*", na=False, case=False)]
 dfSteeNest = dfSteeNest[dfSteeNest['PART NUMBER'].str.contains("SB*", na=False, case=False)]
-#splitting by structure, "qty req'd" is no longer relevant
-dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip())
-#dropping assy and totat. not needed after splitting by structure
-dfSteeNest = dfSteeNest.drop('ASSY.', axis=1)
-dfSteeNest = dfSteeNest.drop('TOTAL', axis=1)
-#making length an interger, makes computer sweat less
-dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: x*10000)
-#S-Tees get 2 per length on s-beams
-dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x/2))
-#adding kerf unless the part is a whole stick (should not happen on s-tees anyways)
-dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
-#one line per part, 10 qty = 10 lines
-dfSteeNest = dfSteeNest.loc[dfSteeNest.index.repeat(dfSteeNest['QTY'])].reset_index(drop=True)
-#setting all qty to 1
-dfSteeNest['QTY'] = 1
-#deleting unnecessary/irrelevant columns
-dfSteeNest = dfSteeNest.drop('WIDTH', axis=1)
-dfSteeNest = dfSteeNest.drop('WIDTH.1', axis=1)
-dfSteeNest = dfSteeNest.drop('WEIGHT', axis=1)
-dfSteeNest = dfSteeNest.drop('REV', axis=1)
-dfSteeNest = dfSteeNest.drop('SHEET', axis=1)
-#saving to excel file
-dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
 
-#prepping excel sheet for FlatBar order after nesting
-SteeCutTicketWorksetDataFrame = []
-SteeNestWorksetDataFrame = []
+if not dfSteeNest.empty:
+    #splitting by structure, "qty req'd" is no longer relevant
+    dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfSteeNest = dfSteeNest.assign(STRUCTURES=dfSteeNest['STRUCTURES'].astype(str).str.strip())
+    #dropping assy and totat. not needed after splitting by structure
+    dfSteeNest = dfSteeNest.drop('ASSY.', axis=1)
+    dfSteeNest = dfSteeNest.drop('TOTAL', axis=1)
+    #making length an interger, makes computer sweat less
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: x*10000)
+    #S-Tees get 2 per length on s-beams
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x/2))
+    #adding kerf unless the part is a whole stick (should not happen on s-tees anyways)
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+    #one line per part, 10 qty = 10 lines
+    dfSteeNest = dfSteeNest.loc[dfSteeNest.index.repeat(dfSteeNest['QTY'])].reset_index(drop=True)
+    #setting all qty to 1
+    dfSteeNest['QTY'] = 1
+    #deleting unnecessary/irrelevant columns
+    dfSteeNest = dfSteeNest.drop('WIDTH', axis=1)
+    dfSteeNest = dfSteeNest.drop('WIDTH.1', axis=1)
+    dfSteeNest = dfSteeNest.drop('WEIGHT', axis=1)
+    dfSteeNest = dfSteeNest.drop('REV', axis=1)
+    dfSteeNest = dfSteeNest.drop('SHEET', axis=1)
+    #saving to excel file
+    dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
 
-def create_data_model_s_tee():
-    data = {}
-    #part lengths
-    data['weights'] = dfSteeType['LENGTH.1'].astype(int).values.tolist()
-    data['items'] = list(range(len(data['weights'])))
-    data['bins'] = data['items']
-    #stick size
-    data['bin_capacity'] = 4800000
-    data['material'] = dfSteeType.iloc[0,7]
-    data['structures'] = dfSteeType.iloc[0,11]
-    data['drawing'] = dfSteeType.iloc[0,1]
-    return data
+    #prepping excel sheet for FlatBar order after nesting
+    SteeCutTicketWorksetDataFrame = []
+    SteeNestWorksetDataFrame = []
 
-#angle nesting fuction
-for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):    
-    
-    data = create_data_model_s_tee()
+    def create_data_model_s_tee():
+        data = {}
+        #part lengths
+        data['weights'] = dfSteeType['LENGTH.1'].astype(int).values.tolist()
+        data['items'] = list(range(len(data['weights'])))
+        data['bins'] = data['items']
+        #stick size
+        data['bin_capacity'] = 4800000
+        data['material'] = dfSteeType.iloc[0,7]
+        data['structures'] = dfSteeType.iloc[0,11]
+        data['drawing'] = dfSteeType.iloc[0,1]
+        return data
 
-    # Create the CP-SAT model.
-    model = cp_model.CpModel()
+    #angle nesting fuction
+    for group, dfSteeType in dfSteeNest.groupby(['PROJECT', 'LENGTH']):    
+        
+        data = create_data_model_s_tee()
 
-    # Variables
-    # x[i, j] = 1 if item i is packed in bin j.
-    x = {}
-    for i in data['items']:
+        # Create the CP-SAT model.
+        model = cp_model.CpModel()
+
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+        x = {}
+        for i in data['items']:
+            for j in data['bins']:
+                x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
+
+        # y[j] = 1 if bin j is used.
+        y = {}
         for j in data['bins']:
-            x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
+            y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
 
-    # y[j] = 1 if bin j is used.
-    y = {}
-    for j in data['bins']:
-        y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
+        # Constraints
+        # Each item must be in exactly one bin.
+        for i in data['items']:
+            model.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-    # Constraints
-    # Each item must be in exactly one bin.
-    for i in data['items']:
-        model.Add(sum(x[i, j] for j in data['bins']) == 1)
-
-    # The amount packed in each bin cannot exceed its capacity.
-    for j in data['bins']:
-        model.Add(
-            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
-            data['bin_capacity'])
-
-    # Objective: minimize the number of bins used.
-    model.Minimize(sum(y[j] for j in data['bins']))
-
-    # Create the solver and solve the model.
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 30.0
-    status = solver.Solve(model)
-
-    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        #zero out to start
-        num_bins = 0
-        bin_usage = 0
+        # The amount packed in each bin cannot exceed its capacity.
         for j in data['bins']:
-            if solver.Value(y[j]) == 1:
-                bin_items = []
-                bin_weight = 0
-                for i in data['items']:
-                    if solver.Value(x[i, j]) > 0:
-                        bin_items.append(i)
-                        #stick usage
-                        bin_weight += data['weights'][i]
-                        SteeNestDictionary = {'PROJECT': projectName, 'PART': dfSteeType.iloc[i,4], 'QTY': 1, 'GRADE': dfSteeType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSteeType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
-                        #list of parts to dataframe
-                        SteeNestDictionaryDataFrame = pd.DataFrame(data=SteeNestDictionary, index=[0])
-                        #add the parts to the overall list
-                        SteeNestWorksetDataFrame.append(SteeNestDictionaryDataFrame)
-                if bin_items:
-                    #counting number of sticks pulled
-                    num_bins += 1
-                    #estimating material usage
-                    if bin_weight < 3600000 and bin_weight > 1200000:
-                        bin_usage += round(bin_weight/4800000, 2)
-                    elif bin_weight > 3600000:
-                        bin_usage += 1
-                    else:
-                        bin_usage += 0.25
-    else:
-        #there's either a fatal problem, or there's too many "good" solutions
-        print('S-Tee nesting problem does not have an optimal or feasible solution.')
+            model.Add(
+                sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+                data['bin_capacity'])
 
-if SteeNestWorksetDataFrame:
+        # Objective: minimize the number of bins used.
+        model.Minimize(sum(y[j] for j in data['bins']))
+
+        # Create the solver and solve the model.
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0
+        status = solver.Solve(model)
+
+        #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+            #zero out to start
+            num_bins = 0
+            bin_usage = 0
+            for j in data['bins']:
+                if solver.Value(y[j]) == 1:
+                    bin_items = []
+                    bin_weight = 0
+                    for i in data['items']:
+                        if solver.Value(x[i, j]) > 0:
+                            bin_items.append(i)
+                            #stick usage
+                            bin_weight += data['weights'][i]
+                            SteeNestDictionary = {'PROJECT': projectName, 'PART': dfSteeType.iloc[i,4], 'QTY': 1, 'GRADE': dfSteeType.iloc[i,10], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': dfSteeType.iloc[i,8], 'STATION': data['structures'], 'NESTED LENGTH': (data['weights'][i])/10000, 'STICK': j}
+                            #list of parts to dataframe
+                            SteeNestDictionaryDataFrame = pd.DataFrame(data=SteeNestDictionary, index=[0])
+                            #add the parts to the overall list
+                            SteeNestWorksetDataFrame.append(SteeNestDictionaryDataFrame)
+                    if bin_items:
+                        #counting number of sticks pulled
+                        num_bins += 1
+                        #estimating material usage
+                        if bin_weight < 3600000 and bin_weight > 1200000:
+                            bin_usage += round(bin_weight/4800000, 2)
+                        elif bin_weight > 3600000:
+                            bin_usage += 1
+                        else:
+                            bin_usage += 0.25
+        else:
+            #there's either a fatal problem, or there's too many "good" solutions
+            print('S-Tee nesting problem does not have an optimal or feasible solution.')
+
     SteePostNestDataFrame = pd.concat(SteeNestWorksetDataFrame, ignore_index=True)
     #combining multiple quantities of the same part on the same stick
     SteePostNestDataFrame = SteePostNestDataFrame.groupby(['PROJECT', 'PART', 'GRADE', 'MATERIAL DESCRIPTION', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
@@ -795,6 +799,9 @@ if SteeNestWorksetDataFrame:
     SteePostNestDataFrame = SteePostNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'LENGTH', 'STATION', 'NESTED LENGTH', 'STICK']]
     #save to excel file
     SteePostNestDataFrame.to_excel(output_directory + "//" + projectName + " S-Tees Nested.xlsx", sheet_name="Sheet 1")
+
+else:
+    print("No s-tees found in BOM")
 
 #####NUTS AND BOLTS#####
 
@@ -991,7 +998,7 @@ dfRemain.to_excel(output_directory + "//" + projectName + " Misc Hardware.xlsx",
 
 #filter out everything but clamp plates
 dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
-if dfClampPl.empty == False:
+if not dfClampPl.empty:
     #adding offset to clamp plate length, done by CPS name
     dfClampPl['LENGTH.1'] = dfClampPl.apply(lambda row:(int((row['PART NUMBER'])[-2:])/16)+row['LENGTH.1'],axis=1)
     #splitting by structure, "qty req'd" is no longer relevant
@@ -1019,96 +1026,95 @@ if dfClampPl.empty == False:
     #save to new excel file
     dfClampPl.to_excel(output_directory + "//" + projectName + " Clamp Plates.xlsx", sheet_name="Sheet 1")
 
-#prepping excel sheet for FlatBar order after nesting
-ClampPlatetCutTicketWorksetDataFrame = []
-ClampPlateNestWorksetDataFrame = []
+    #prepping excel sheet for FlatBar order after nesting
+    ClampPlatetCutTicketWorksetDataFrame = []
+    ClampPlateNestWorksetDataFrame = []
 
-def create_data_model_clamp_pl():
-    data = {}
-    #part lengths
-    data['weights'] = dfClampPlateType['LENGTH.1'].astype(int).values.tolist()
-    data['items'] = list(range(len(data['weights'])))
-    data['bins'] = data['items']
-    #stick size
-    data['bin_capacity'] = 2400000
-    data['material'] = dfClampPlateType.iloc[0,7]
-    data['structures'] = dfClampPlateType.iloc[0,10]
-    data['drawing'] = dfClampPlateType.iloc[0,1]
-    return data
+    def create_data_model_clamp_pl():
+        data = {}
+        #part lengths
+        data['weights'] = dfClampPlateType['LENGTH.1'].astype(int).values.tolist()
+        data['items'] = list(range(len(data['weights'])))
+        data['bins'] = data['items']
+        #stick size
+        data['bin_capacity'] = 2400000
+        data['material'] = dfClampPlateType.iloc[0,7]
+        data['structures'] = dfClampPlateType.iloc[0,10]
+        data['drawing'] = dfClampPlateType.iloc[0,1]
+        return data
 
-#angle nesting fuction
-for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
+    #angle nesting fuction
+    for group, dfClampPlateType in dfClampPl.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
+        
+        data = create_data_model_clamp_pl()
+
+        # Create the CP-SAT model.
+        model = cp_model.CpModel()
     
-    data = create_data_model_clamp_pl()
+        # Variables
+        # x[i, j] = 1 if item i is packed in bin j.
+        x = {}
+        for i in data['items']:
+            for j in data['bins']:
+                x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
 
-    # Create the CP-SAT model.
-    model = cp_model.CpModel()
-   
-    # Variables
-    # x[i, j] = 1 if item i is packed in bin j.
-    x = {}
-    for i in data['items']:
+        # y[j] = 1 if bin j is used.
+        y = {}
         for j in data['bins']:
-            x[(i, j)] = model.NewIntVar(0, 1, 'x_%i_%i' % (i, j))
+            y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
 
-    # y[j] = 1 if bin j is used.
-    y = {}
-    for j in data['bins']:
-        y[j] = model.NewIntVar(0, 1, 'y[%i]' % j)
+        # Constraints
+        # Each item must be in exactly one bin.
+        for i in data['items']:
+            model.Add(sum(x[i, j] for j in data['bins']) == 1)
 
-    # Constraints
-    # Each item must be in exactly one bin.
-    for i in data['items']:
-        model.Add(sum(x[i, j] for j in data['bins']) == 1)
-
-    # The amount packed in each bin cannot exceed its capacity.
-    for j in data['bins']:
-        model.Add(
-            sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
-            data['bin_capacity'])
-
-    # Objective: minimize the number of bins used.
-    model.Minimize(sum(y[j] for j in data['bins']))
-
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 30.0
-    status = solver.Solve(model)
-
-    #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        #zero out to start
-        num_bins = 0
-        bin_usage = 0
+        # The amount packed in each bin cannot exceed its capacity.
         for j in data['bins']:
-            if solver.Value(y[j]) == 1:
-                bin_items = []
-                bin_weight = 0
-                for i in data['items']:
-                    if solver.Value(x[i, j]) > 0:
-                        bin_items.append(i)
-                        #stick usage
-                        bin_weight += data['weights'][i]
-                        #make list of parts
-                        ClampPlateNestDictionary = {'PROJECT': projectName, 'PART': dfClampPlateType.iloc[i,4], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': (data['weights'][i])/10000, 'QTY': 1, 'STICK': j}
-                        #list of parts to dataframe
-                        ClampPlateNestDictionaryDataFrame = pd.DataFrame(data=ClampPlateNestDictionary, index=[0])
-                        #add the parts to the overall list
-                        ClampPlateNestWorksetDataFrame.append(ClampPlateNestDictionaryDataFrame)
-                if bin_items:
-                    #counting number of sticks pulled
-                    num_bins += 1
-                    #estimating material usage
-                    if bin_weight < 1800000 and bin_weight > 600000:
-                        bin_usage += round(bin_weight/2400000, 2)
-                    elif bin_weight > 1800000:
-                        bin_usage += 1
-                    else:
-                        bin_usage += 0.25
-    else:
-        #there's either a fatal problem, or there's too many "good" solutions
-        print('Clamp plate nesting problem does not have an optimal or feasible solution.')
+            model.Add(
+                sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= y[j] *
+                data['bin_capacity'])
 
-if ClampPlateNestWorksetDataFrame:
+        # Objective: minimize the number of bins used.
+        model.Minimize(sum(y[j] for j in data['bins']))
+
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0
+        status = solver.Solve(model)
+
+        #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+            #zero out to start
+            num_bins = 0
+            bin_usage = 0
+            for j in data['bins']:
+                if solver.Value(y[j]) == 1:
+                    bin_items = []
+                    bin_weight = 0
+                    for i in data['items']:
+                        if solver.Value(x[i, j]) > 0:
+                            bin_items.append(i)
+                            #stick usage
+                            bin_weight += data['weights'][i]
+                            #make list of parts
+                            ClampPlateNestDictionary = {'PROJECT': projectName, 'PART': dfClampPlateType.iloc[i,4], 'MATERIAL DESCRIPTION': data['material'], 'LENGTH': (data['weights'][i])/10000, 'QTY': 1, 'STICK': j}
+                            #list of parts to dataframe
+                            ClampPlateNestDictionaryDataFrame = pd.DataFrame(data=ClampPlateNestDictionary, index=[0])
+                            #add the parts to the overall list
+                            ClampPlateNestWorksetDataFrame.append(ClampPlateNestDictionaryDataFrame)
+                    if bin_items:
+                        #counting number of sticks pulled
+                        num_bins += 1
+                        #estimating material usage
+                        if bin_weight < 1800000 and bin_weight > 600000:
+                            bin_usage += round(bin_weight/2400000, 2)
+                        elif bin_weight > 1800000:
+                            bin_usage += 1
+                        else:
+                            bin_usage += 0.25
+        else:
+            #there's either a fatal problem, or there's too many "good" solutions
+            print('Clamp plate nesting problem does not have an optimal or feasible solution.')
+
     ClampPlatePoseNestDataFrame = pd.concat(ClampPlateNestWorksetDataFrame, ignore_index=True)
     #combining same parts on same stick
     ClampPlatePoseNestDataFrame = ClampPlatePoseNestDataFrame.groupby(['PROJECT', 'PART', 'MATERIAL DESCRIPTION', 'LENGTH', 'STICK'])['QTY'].sum(numeric_only=True).reset_index()
@@ -1116,6 +1122,9 @@ if ClampPlateNestWorksetDataFrame:
     ClampPlatePoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
     #saving to excel file
     ClampPlatePoseNestDataFrame.to_excel(output_directory + "//" + projectName + " Clamp Plates Nested.xlsx", sheet_name="Sheet 1")
+
+else:
+    print("No clamp plates found in BOM")
 
 
 #creating bill of lading for galvanizer
