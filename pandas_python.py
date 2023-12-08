@@ -167,7 +167,7 @@ if not dfAngle.empty:
     #adding kerf unless the part is a whole stick
     dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
     #saving to excel file
-    dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
+    # dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
     #prepping excel sheet for angle order after nesting
 
     AngleCutTicketWorksetDataFrame = []
@@ -264,7 +264,7 @@ if not dfAngle.empty:
     #saving angle nesting results 
     if AngleCutTicketWorksetDataFrame:
         AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
-        AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
+        # AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
 
 
         for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
@@ -282,17 +282,17 @@ if not dfAngle.empty:
             dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
 
         #new excel file
-        writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
+        # writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
         AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-        AnglePostNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
+        # AnglePostNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
         #deleting unnessary/irrelevant columns
         AnglePostNestDataFrame = AnglePostNestDataFrame.drop('STRUCTURES', axis=1)
         AnglePostNestDataFrame = AnglePostNestDataFrame.drop('DRAWING', axis=1)
         #combing by material type
         AnglePoseNestDataFrameSUM = AnglePostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-        AnglePoseNestDataFrameSUM.to_excel(writer)
+        # AnglePoseNestDataFrameSUM.to_excel(writer)
         #saving excel file
-        writer.close()
+        # writer.close()
 else:
     print("No angle material found in BOM")
 #####Flat Bar order#####
@@ -357,7 +357,7 @@ if not dfFlatBar.empty:
     #adding kerf unless the part is a whole stick (should not happen on flat bar anyways)
     dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
     #saving to excel file
-    dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
+    # dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
 
     #prepping excel sheet for FlatBar order after nesting
     FlatBarCutTicketWorksetDataFrame = []
@@ -456,7 +456,7 @@ if not dfFlatBar.empty:
     if FlatBarCutTicketWorksetDataFrame:
         #saving FlatBar nesting results   
         FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
-        FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
+        # FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
 
         #each page of cut ticket being written to excel file
         for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
@@ -477,16 +477,16 @@ if not dfFlatBar.empty:
         writerCutTicket.close()
 
         #new excel file
-        writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
+        # writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
         FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
         #deleting unnessary/irrelevant columns
         FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('STRUCTURES', axis=1)
         FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('DRAWING', axis=1)
         #combining by material type
         FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-        FlatBarPostNestDataFrameSUM.to_excel(writer)
+        # FlatBarPostNestDataFrameSUM.to_excel(writer)
         #saving excel file
-        writer.close()
+        # writer.close()
 else:
     print("No flat bar material found in BOM")
 
@@ -551,7 +551,7 @@ if not dfSignBracketNest.empty:
     dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
     dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
     #saving to excel file
-    dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
+    # dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
 
 
     #prepping excel sheet for FlatBar order after nesting
@@ -691,7 +691,7 @@ if not dfSteeNest.empty:
     dfSteeNest = dfSteeNest.drop('REV', axis=1)
     dfSteeNest = dfSteeNest.drop('SHEET', axis=1)
     #saving to excel file
-    dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
+    # dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
 
     #prepping excel sheet for FlatBar order after nesting
     SteeCutTicketWorksetDataFrame = []
