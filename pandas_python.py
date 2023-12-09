@@ -163,9 +163,10 @@ if not dfAngle.empty:
     dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
     dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
     #making length an interger, makes computer sweat less
-    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*10000)
+    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick
-    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+125) if x<480000 else x)
     #saving to excel file
     # dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
     #prepping excel sheet for angle order after nesting
@@ -180,7 +181,7 @@ if not dfAngle.empty:
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         # stick size
-        data['bin_capacity'] = 4800000
+        data['bin_capacity'] = 480000
         data['material'] = dfAngleType.iloc[0, 5]
         data['structures'] = dfAngleType.iloc[0, 8]
         data['drawing'] = dfAngleType.iloc[0, 1]
@@ -239,9 +240,9 @@ if not dfAngle.empty:
                         # counting number of sticks pulled
                         num_bins += 1
                         # estimating material usage
-                        if bin_weight < 3600000 and bin_weight > 1200000:
-                            bin_usage += round(bin_weight / 4800000, 2)
-                        elif bin_weight > 3600000:
+                        if bin_weight < 360000 and bin_weight > 120000:
+                            bin_usage += round(bin_weight / 480000, 2)
+                        elif bin_weight > 360000:
                             bin_usage += 1
                         else:
                             bin_usage += 0.25
@@ -353,9 +354,10 @@ if not dfFlatBar.empty:
     dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
     dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
     #making length an interger, makes computer sweat less
-    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*10000)
+    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick (should not happen on flat bar anyways)
-    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+125) if x<240000 else x)
     #saving to excel file
     # dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
 
@@ -370,7 +372,7 @@ if not dfFlatBar.empty:
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         #stick size
-        data['bin_capacity'] = 2400000
+        data['bin_capacity'] = 240000
         data['material'] = dfFlatBarType.iloc[0,5]
         data['structures'] = dfFlatBarType.iloc[0,8]
         data['drawing'] = dfFlatBarType.iloc[0,2]
@@ -433,9 +435,9 @@ if not dfFlatBar.empty:
                         #counting number of sticks pulled
                         num_bins += 1
                         #estimating material usage
-                        if bin_weight < 1800000 and bin_weight > 600000:
-                            bin_usage += round(bin_weight/2400000, 2)
-                        elif bin_weight > 1800000:
+                        if bin_weight < 180000 and bin_weight > 60000:
+                            bin_usage += round(bin_weight/240000, 2)
+                        elif bin_weight > 180000:
                             bin_usage += 1
                         else:
                             bin_usage += 0.25
@@ -537,9 +539,10 @@ if not dfSignBracketNest.empty:
     dfSignBracketNest = dfSignBracketNest.drop('ASSY.', axis=1)
     dfSignBracketNest = dfSignBracketNest.drop('TOTAL', axis=1)
     #making length an interger, makes computer sweat less
-    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*10000)
+    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick (should not happen on sign brackets anyways)
-    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+    dfSignBracketNest['LENGTH.1'] = dfSignBracketNest['LENGTH.1'].apply(lambda x:(x+125) if x<480000 else x)
     #one line per part, 10 qty = 10 lines
     dfSignBracketNest = dfSignBracketNest.loc[dfSignBracketNest.index.repeat(dfSignBracketNest['QTY'])].reset_index(drop=True)
     #setting all qty to 1
@@ -565,7 +568,7 @@ if not dfSignBracketNest.empty:
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         #stick size
-        data['bin_capacity'] = 4800000
+        data['bin_capacity'] = 480000
         data['material'] = dfSignBracketType.iloc[0,7]
         data['structures'] = dfSignBracketType.iloc[0,11]
         data['drawing'] = dfSignBracketType.iloc[0,1]
@@ -632,9 +635,9 @@ if not dfSignBracketNest.empty:
                         # Counting number of sticks pulled
                         num_bins += 1
                         # Estimating material usage
-                        if bin_weight < 3600000 and bin_weight > 1200000:
-                            bin_usage += round(bin_weight/4800000, 2)
-                        elif bin_weight > 3600000:
+                        if bin_weight < 360000 and bin_weight > 120000:
+                            bin_usage += round(bin_weight/480000, 2)
+                        elif bin_weight > 360000:
                             bin_usage += 1
                         else:
                             bin_usage += 0.25
@@ -675,11 +678,12 @@ if not dfSteeNest.empty:
     dfSteeNest = dfSteeNest.drop('ASSY.', axis=1)
     dfSteeNest = dfSteeNest.drop('TOTAL', axis=1)
     #making length an interger, makes computer sweat less
-    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: x*10000)
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x: x*1000)
     #S-Tees get 2 per length on s-beams
     dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x/2))
     #adding kerf unless the part is a whole stick (should not happen on s-tees anyways)
-    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x+1250) if x<4800000 else x)
+    dfSteeNest['LENGTH.1'] = dfSteeNest['LENGTH.1'].apply(lambda x:(x+125) if x<480000 else x)
     #one line per part, 10 qty = 10 lines
     dfSteeNest = dfSteeNest.loc[dfSteeNest.index.repeat(dfSteeNest['QTY'])].reset_index(drop=True)
     #setting all qty to 1
@@ -704,7 +708,7 @@ if not dfSteeNest.empty:
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         #stick size
-        data['bin_capacity'] = 4800000
+        data['bin_capacity'] = 480000
         data['material'] = dfSteeType.iloc[0,7]
         data['structures'] = dfSteeType.iloc[0,11]
         data['drawing'] = dfSteeType.iloc[0,1]
@@ -772,9 +776,9 @@ if not dfSteeNest.empty:
                         #counting number of sticks pulled
                         num_bins += 1
                         #estimating material usage
-                        if bin_weight < 3600000 and bin_weight > 1200000:
-                            bin_usage += round(bin_weight/4800000, 2)
-                        elif bin_weight > 3600000:
+                        if bin_weight < 360000 and bin_weight > 120000:
+                            bin_usage += round(bin_weight/480000, 2)
+                        elif bin_weight > 360000:
                             bin_usage += 1
                         else:
                             bin_usage += 0.25
@@ -1025,9 +1029,10 @@ if not dfClampPl.empty:
     #setting all quantities to 1
     dfClampPl['QTY'] = 1
     #making length an interger, makes computer sweat less
-    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*10000)
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick (should not happen on clamp plates anyways)
-    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+1250) if x<2400000 else x)
+    dfClampPl['LENGTH.1'] = dfClampPl['LENGTH.1'].apply(lambda x:(x+125) if x<240000 else x)
     #sort by part number column
     dfClampPl = dfClampPl.sort_values('PART NUMBER')
     #delete unnecessary columns
@@ -1053,7 +1058,7 @@ if not dfClampPl.empty:
         data['items'] = list(range(len(data['weights'])))
         data['bins'] = data['items']
         #stick size
-        data['bin_capacity'] = 2400000
+        data['bin_capacity'] = 240000
         data['material'] = dfClampPlateType.iloc[0,7]
         data['structures'] = dfClampPlateType.iloc[0,10]
         data['drawing'] = dfClampPlateType.iloc[0,1]
@@ -1121,9 +1126,9 @@ if not dfClampPl.empty:
                         #counting number of sticks pulled
                         num_bins += 1
                         #estimating material usage
-                        if bin_weight < 1800000 and bin_weight > 600000:
-                            bin_usage += round(bin_weight/2400000, 2)
-                        elif bin_weight > 1800000:
+                        if bin_weight < 180000 and bin_weight > 60000:
+                            bin_usage += round(bin_weight/240000, 2)
+                        elif bin_weight > 180000:
                             bin_usage += 1
                         else:
                             bin_usage += 0.25
