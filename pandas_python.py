@@ -90,8 +90,6 @@ if excel_file[len(excel_file)-1] == "s":
                dest_file_name=excel_file + "x")
         excel_file = excel_file + "x"
 
-##Multi 21 sheet
-
 #read the excel file's first sheet, set line 1 (2nd line) as header for column names
 df = pd.read_excel(excel_file, sheet_name=0, header=[1], skiprows=[2], dtype_backend="pyarrow")
 
@@ -116,60 +114,31 @@ if not dfAngle.empty:
 
     #sort by column MATERIAL DESCRIPTION
     dfAngle = dfAngle.sort_values('MATERIAL DESCRIPTION')
-    #round up angles over half a stock length to a whole stock piece
-    dfAngleRound = dfAngle.copy(deep=True)
-    dfAngleRound.loc[dfAngleRound['LENGTH.1'] >240, 'LENGTH.1'] = 480
-    #column sum = (total qty) x (length in inches)
-    dfAngleSum = dfAngleRound
-    dfAngleSum['SUM'] = dfAngleSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
-    dfAngleGroup = dfAngleSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
-
-    #delete the irrelevant columns that also got summed
-    dfAngleGroup = dfAngleGroup.drop('ITEM', axis=1)
-    dfAngleGroup = dfAngleGroup.drop('WEIGHT', axis=1)
-    #add STOCK column that divides sum by 480
-    dfAngleGroup['STOCK'] = dfAngleGroup.apply(lambda row:(row['SUM'] / 480),axis=1)
-    #add ROUND column that rounds up STOCK column
-    dfAngleGroup['ROUND'] = dfAngleGroup['STOCK'].apply(np.ceil)
-    #add +10% column that adds 10% to ROUND column
-    dfAngleGroup['+10%'] = dfAngleGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1)
-    #add ORDER coumn that rounds up +10% column
-    dfAngleGroup['ORDER'] = dfAngleGroup['+10%'].apply(np.ceil)
-    #delete the math columns so you get a clean copy-paste to the order form
-    dfAngleGroup = dfAngleGroup.drop('SUM', axis=1)
-    dfAngleGroup = dfAngleGroup.drop('STOCK', axis=1)
-    dfAngleGroup = dfAngleGroup.drop('ROUND', axis=1)
-    dfAngleGroup = dfAngleGroup.drop('+10%', axis=1)
-
-    #prepping data for angle nesting
-    dfAngleNest = dfAngle.copy(deep=True)
     #splitting by structure, "qty req'd" is no longer relevant
-    dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-    dfAngleNest = dfAngleNest.assign(STRUCTURES=dfAngleNest['STRUCTURES'].astype(str).str.strip())
+    dfAngle = dfAngle.assign(STRUCTURES=dfAngle['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfAngle = dfAngle.assign(STRUCTURES=dfAngle['STRUCTURES'].astype(str).str.strip())
     #dropping assy and totat. not needed after splitting by structure
-    dfAngleNest = dfAngleNest.drop('ASSY.', axis=1)
-    dfAngleNest = dfAngleNest.drop('TOTAL', axis=1)
+    dfAngle = dfAngle.drop('ASSY.', axis=1)
+    dfAngle = dfAngle.drop('TOTAL', axis=1)
     #one line per part, 10 qty = 10 lines
-    dfAngleNest = dfAngleNest.loc[dfAngleNest.index.repeat(dfAngleNest['QTY'])].reset_index(drop=True)
+    dfAngle = dfAngle.loc[dfAngle.index.repeat(dfAngle['QTY'])].reset_index(drop=True)
     #setting all qty to 1
-    dfAngleNest['QTY'] = 1
+    dfAngle['QTY'] = 1
     #deleting unnecessary/irrelevant columns
-    dfAngleNest = dfAngleNest.drop('REV', axis=1)
-    dfAngleNest = dfAngleNest.drop('SHEET', axis=1)
-    dfAngleNest = dfAngleNest.drop('MAIN NUMBER', axis=1)
-    dfAngleNest = dfAngleNest.drop('PART DESCRIPTION', axis=1)
-    dfAngleNest = dfAngleNest.drop('WIDTH', axis=1)
-    dfAngleNest = dfAngleNest.drop('WIDTH.1', axis=1)
-    dfAngleNest = dfAngleNest.drop('GRADE', axis=1)
-    dfAngleNest = dfAngleNest.drop('WEIGHT', axis=1)
+    dfAngle = dfAngle.drop('REV', axis=1)
+    dfAngle = dfAngle.drop('SHEET', axis=1)
+    dfAngle = dfAngle.drop('MAIN NUMBER', axis=1)
+    dfAngle = dfAngle.drop('PART DESCRIPTION', axis=1)
+    dfAngle = dfAngle.drop('WIDTH', axis=1)
+    dfAngle = dfAngle.drop('WIDTH.1', axis=1)
+    dfAngle = dfAngle.drop('GRADE', axis=1)
+    dfAngle = dfAngle.drop('WEIGHT', axis=1)
     #making length an interger, makes computer sweat less
-    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: round(x, 3))
-    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x: x*1000)
+    dfAngle['LENGTH.1'] = dfAngle['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfAngle['LENGTH.1'] = dfAngle['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick
-    dfAngleNest['LENGTH.1'] = dfAngleNest['LENGTH.1'].apply(lambda x:(x+125) if x<480000 else x)
+    dfAngle['LENGTH.1'] = dfAngle['LENGTH.1'].apply(lambda x:(x+125) if x<480000 else x)
     #saving to excel file
-    # dfAngleNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiAngleNest.xlsx", sheet_name="Sheet 1")
-    #prepping excel sheet for angle order after nesting
 
     AngleCutTicketWorksetDataFrame = []
     AngleNestWorksetDataFrame = []
@@ -188,7 +157,7 @@ if not dfAngle.empty:
         return data
 
     # angle nesting function
-    for group, dfAngleType in dfAngleNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):# print(dfShip)
+    for group, dfAngleType in dfAngle.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
         data = create_data_model_angle()
 
         # Create the CP-SAT model.
@@ -265,8 +234,6 @@ if not dfAngle.empty:
     #saving angle nesting results 
     if AngleCutTicketWorksetDataFrame:
         AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
-        # AngleCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGAngleCutTicket.xlsx", sheet_name="Sheet 1")
-
 
         for group, dfAngleCutTicket in AngleCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
             #sorting by BOM item number first
@@ -283,17 +250,12 @@ if not dfAngle.empty:
             dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
 
         #new excel file
-        # writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestAngleOrder.xlsx")
         AnglePostNestDataFrame = pd.concat(AngleNestWorksetDataFrame, ignore_index=True)
-        # AnglePostNestDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGPostNestAngle.xlsx", sheet_name="Sheet 1")
         #deleting unnessary/irrelevant columns
         AnglePostNestDataFrame = AnglePostNestDataFrame.drop('STRUCTURES', axis=1)
         AnglePostNestDataFrame = AnglePostNestDataFrame.drop('DRAWING', axis=1)
         #combing by material type
         AnglePoseNestDataFrameSUM = AnglePostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-        # AnglePoseNestDataFrameSUM.to_excel(writer)
-        #saving excel file
-        # writer.close()
 else:
     print("No angle material found in BOM")
 #####Flat Bar order#####
@@ -307,59 +269,30 @@ if not dfFlatBar.empty:
 
     #sort by column MATERIAL DESCRIPTION
     dfFlatBar = dfFlatBar.sort_values('MATERIAL DESCRIPTION')
-    #round up flat bar over half a stock length to a whole stock piece
-    dfFlatBarRound = dfFlatBar.copy(deep=True)
-    dfFlatBarRound.loc[dfFlatBarRound['LENGTH.1'] >120, 'LENGTH.1'] = 240
-    #column sum = (total qty) x (length in inches)
-    dfFlatBarSum = dfFlatBarRound
-    dfFlatBarSum['SUM'] = dfFlatBarSum.apply(lambda row:(row['TOTAL'] * row['LENGTH.1']),axis=1)
-    #add all of each material together
-    dfFlatBarGroup= dfFlatBarSum.groupby(['PROJECT','MATERIAL DESCRIPTION'],dropna=False).sum(numeric_only=True)
-    #delete the irrelevant columns that also got summed
-    dfFlatBarGroup = dfFlatBarGroup.drop('ITEM', axis=1)
-    dfFlatBarGroup = dfFlatBarGroup.drop('WEIGHT', axis=1)
-    #add STOCK column that divides sum by 240
-    dfFlatBarGroup['STOCK'] = dfFlatBarGroup.apply(lambda row:(row['SUM'] / 240),axis=1)
-    #add ROUND column that rounds up STOCK column
-    dfFlatBarGroup['ROUND'] = dfFlatBarGroup['STOCK'].apply(np.ceil)
-    #add +10% column that adds 10% to ROUND column
-    dfFlatBarGroup['+10%'] = dfFlatBarGroup.apply(lambda row:(row['ROUND'] * 1.1),axis=1)
-    #add ORDER coumn that rounds up +10% column
-    dfFlatBarGroup['ORDER'] = dfFlatBarGroup['+10%'].apply(np.ceil)
-    #deleting unnessary/irrelevant columns
-    dfFlatBarGroup = dfFlatBarGroup.drop('SUM', axis=1)
-    dfFlatBarGroup = dfFlatBarGroup.drop('STOCK', axis=1)
-    dfFlatBarGroup = dfFlatBarGroup.drop('ROUND', axis=1)
-    dfFlatBarGroup = dfFlatBarGroup.drop('+10%', axis=1)
-
-    #prepping data for flat bar nesting
-    dfFlatBarNest = dfFlatBar.copy(deep=True)
     #splitting by structure, "qty req'd" is no longer relevant
-    dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
-    dfFlatBarNest = dfFlatBarNest.assign(STRUCTURES=dfFlatBarNest['STRUCTURES'].astype(str).str.strip())
+    dfFlatBar = dfFlatBar.assign(STRUCTURES=dfFlatBar['STRUCTURES'].astype(str).str.strip().str.split("|")).explode('STRUCTURES').reset_index(drop=True)
+    dfFlatBar = dfFlatBar.assign(STRUCTURES=dfFlatBar['STRUCTURES'].astype(str).str.strip())
     #dropping assy and totat. not needed after splitting by structure
-    dfFlatBarNest = dfFlatBarNest.drop('ASSY.', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('TOTAL', axis=1)
+    dfFlatBar = dfFlatBar.drop('ASSY.', axis=1)
+    dfFlatBar = dfFlatBar.drop('TOTAL', axis=1)
     #one line per part, 10 qty = 10 lines
-    dfFlatBarNest = dfFlatBarNest.loc[dfFlatBarNest.index.repeat(dfFlatBarNest['QTY'])].reset_index(drop=True)
+    dfFlatBar = dfFlatBar.loc[dfFlatBar.index.repeat(dfFlatBar['QTY'])].reset_index(drop=True)
     #setting all qty to 1
-    dfFlatBarNest['QTY'] = 1
+    dfFlatBar['QTY'] = 1
     #deleting unnessary/irrelevant columns
-    dfFlatBarNest = dfFlatBarNest.drop('REV', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('SHEET', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('MAIN NUMBER', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('PART DESCRIPTION', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('WIDTH', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('WIDTH.1', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('GRADE', axis=1)
-    dfFlatBarNest = dfFlatBarNest.drop('WEIGHT', axis=1)
+    dfFlatBar = dfFlatBar.drop('REV', axis=1)
+    dfFlatBar = dfFlatBar.drop('SHEET', axis=1)
+    dfFlatBar = dfFlatBar.drop('MAIN NUMBER', axis=1)
+    dfFlatBar = dfFlatBar.drop('PART DESCRIPTION', axis=1)
+    dfFlatBar = dfFlatBar.drop('WIDTH', axis=1)
+    dfFlatBar = dfFlatBar.drop('WIDTH.1', axis=1)
+    dfFlatBar = dfFlatBar.drop('GRADE', axis=1)
+    dfFlatBar = dfFlatBar.drop('WEIGHT', axis=1)
     #making length an interger, makes computer sweat less
-    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: round(x, 3))
-    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x: x*1000)
+    dfFlatBar['LENGTH.1'] = dfFlatBar['LENGTH.1'].apply(lambda x: round(x, 3))
+    dfFlatBar['LENGTH.1'] = dfFlatBar['LENGTH.1'].apply(lambda x: x*1000)
     #adding kerf unless the part is a whole stick (should not happen on flat bar anyways)
-    dfFlatBarNest['LENGTH.1'] = dfFlatBarNest['LENGTH.1'].apply(lambda x:(x+125) if x<240000 else x)
-    #saving to excel file
-    # dfFlatBarNest.to_excel(output_directory + "//" + projectName + " DEBUGMultiFlatBarNest.xlsx", sheet_name="Sheet 1")
+    dfFlatBar['LENGTH.1'] = dfFlatBar['LENGTH.1'].apply(lambda x:(x+125) if x<240000 else x)
 
     #prepping excel sheet for FlatBar order after nesting
     FlatBarCutTicketWorksetDataFrame = []
@@ -379,7 +312,7 @@ if not dfFlatBar.empty:
         return data
 
     #FlatBar nesting fuction
-    for group, dfFlatBarType in dfFlatBarNest.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
+    for group, dfFlatBarType in dfFlatBar.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
         
         data = create_data_model_FlatBar()
 
@@ -458,7 +391,6 @@ if not dfFlatBar.empty:
     if FlatBarCutTicketWorksetDataFrame:
         #saving FlatBar nesting results   
         FlatBarCutTicketDataFrame = pd.concat(FlatBarCutTicketWorksetDataFrame, ignore_index=True)
-        # FlatBarCutTicketDataFrame.to_excel(output_directory + "//" + projectName + " DEBUGFlatBarCutTicket.xlsx", sheet_name="Sheet 1")
 
         #each page of cut ticket being written to excel file
         for group, dfFlatBarCutTicket in FlatBarCutTicketDataFrame.groupby(['DRAWING', 'STRUCTURES']): 
@@ -478,17 +410,12 @@ if not dfFlatBar.empty:
         #saving excel file
         writerCutTicket.close()
 
-        #new excel file
-        # writer = pd.ExcelWriter(output_directory + "//" + projectName + " DEBUGNestFlatBarOrder.xlsx")
         FlatBarPostNestDataFrame = pd.concat(FlatBarNestWorksetDataFrame, ignore_index=True)
         #deleting unnessary/irrelevant columns
         FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('STRUCTURES', axis=1)
         FlatBarPostNestDataFrame = FlatBarPostNestDataFrame.drop('DRAWING', axis=1)
         #combining by material type
         FlatBarPostNestDataFrameSUM= FlatBarPostNestDataFrame.groupby('MATERIAL DESCRIPTION').sum(numeric_only=True).reset_index()
-        # FlatBarPostNestDataFrameSUM.to_excel(writer)
-        #saving excel file
-        # writer.close()
 else:
     print("No flat bar material found in BOM")
 
@@ -553,9 +480,6 @@ if not dfSignBracketNest.empty:
     dfSignBracketNest = dfSignBracketNest.drop('WEIGHT', axis=1)
     dfSignBracketNest = dfSignBracketNest.drop('REV', axis=1)
     dfSignBracketNest = dfSignBracketNest.drop('SHEET', axis=1)
-    #saving to excel file
-    # dfSignBracketNest.to_excel(output_directory + "//" + projectName + " DEBUG SignBracket PRENEST.xlsx", sheet_name="Sheet 1")
-
 
     #prepping excel sheet for FlatBar order after nesting
     SignBracketCutTicketWorksetDataFrame = []
@@ -694,8 +618,6 @@ if not dfSteeNest.empty:
     dfSteeNest = dfSteeNest.drop('WEIGHT', axis=1)
     dfSteeNest = dfSteeNest.drop('REV', axis=1)
     dfSteeNest = dfSteeNest.drop('SHEET', axis=1)
-    #saving to excel file
-    # dfSteeNest.to_excel(output_directory + "//" + projectName + " DEBUG S-Tee PRENEST.xlsx", sheet_name="Sheet 1")
 
     #prepping excel sheet for FlatBar order after nesting
     SteeCutTicketWorksetDataFrame = []
