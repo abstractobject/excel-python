@@ -220,7 +220,7 @@ if not dfAngle.empty:
         model.Minimize(sum(y[j] for j in data['bins']))
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.max_time_in_seconds = 180.0
         status = solver.Solve(model)
 
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
@@ -412,7 +412,7 @@ if not dfFlatBar.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.max_time_in_seconds = 180.0
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -606,7 +606,7 @@ if not dfSignBracketNest.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.max_time_in_seconds = 180.0
         status = solver.Solve(model)
 
         # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -746,7 +746,7 @@ if not dfSteeNest.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.max_time_in_seconds = 180.0
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -1094,7 +1094,7 @@ if not dfClampPl.empty:
         model.Minimize(sum(y[j] for j in data['bins']))
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0
+        solver.parameters.max_time_in_seconds = 180.0
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
