@@ -9,6 +9,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from fractions import Fraction
 from ortools.sat.python import cp_model
+import re
 
 #required before we can ask for input file
 root = tk.Tk()
@@ -937,6 +938,62 @@ if not dfRemain.empty:
 else:
     print("Nothing remaning found in BOM not caught by other filters")
 
+dodecCheat = pd.DataFrame(np.array([
+    ['PL 1/4"', 15.4375, 48, 60],
+    ['PL 1/4"', 19, 48, 72],
+    ['PL 1/4"', 23.1875, 48, 84],
+    ['PL 1/4"', 29, 48, 96],
+    ['PL 5/16"', 15.4375, 48, 60],
+    ['PL 5/16"', 19, 48, 72],
+    ['PL 5/16"', 23.1875, 48, 84],
+    ['PL 5/16"', 29, 48, 96],
+    ['PL 3/8"', 17.375, 48, 60],
+    ['PL 3/8"', 29, 48, 96],
+    ['PL 7/16"', 29, 48, 96],
+    ['PL 1/2"', 23, 48, 84],
+    ['PL 1/2"', 29, 48, 96],]),
+    columns=['MATERIAL DESCRIPTION', 'WIDTH.1', 'HALF STRAP', 'FULL STRAP'])
+
+dfDodec = df[df['PART DESCRIPTION'].str.contains("Plate*", na=False, case=False)].copy(deep=True)
+if not dfDodec.empty:
+    
+    dfDodec = dfDodec[dfDodec['PART NUMBER'].str.contains("CA*a", na=False, case=False)]
+    dfDodec = dfDodec[dfDodec['GRADE'].str.contains("A572 GR 50", na=False, case=False)]
+    dfDodec = dfDodec[dfDodec['ITEM'] == 1]
+    dfDodec['WIDTH.1'] = dfDodec['WIDTH.1'].astype(float)
+    dodecCheat['WIDTH.1'] = dodecCheat['WIDTH.1'].astype(float)
+    dfDodec = pd.merge(left=dfDodec, right=dodecCheat, how='left', left_on=['MATERIAL DESCRIPTION', 'WIDTH.1'], right_on=['MATERIAL DESCRIPTION', 'WIDTH.1'])
+    dfDodec['PLATEWIDTH'] = dfDodec['FULL STRAP'].astype(str) + " | " + dfDodec['HALF STRAP'].astype(str)
+    dfDodec = dfDodec.assign(PLATEWIDTH=dfDodec['PLATEWIDTH'].astype(str).str.strip().str.split("|")).explode('PLATEWIDTH').reset_index(drop=True)
+    dfDodec = dfDodec.assign(PLATEWIDTH=dfDodec['PLATEWIDTH'].astype(str).str.strip())
+    dfDodec = dfDodec.drop('HALF STRAP', axis=1)
+    dfDodec = dfDodec.drop('FULL STRAP', axis=1)
+    dfDodec.loc[(dfDodec['PLATEWIDTH'].str.contains("48", na=False, case=False)), 'PART NUMBER'] = "OPTIONAL"
+    dfDodec.loc[(dfDodec['PLATEWIDTH'].str.contains("48", na=False, case=False)), 'TOTAL'] = dfDodec['TOTAL'].astype(int) * 2
+    dfDodec = dfDodec.drop('DRAWING', axis=1)
+    dfDodec = dfDodec.drop('REV', axis=1)
+    dfDodec = dfDodec.drop('MAIN NUMBER', axis=1)
+    dfDodec = dfDodec.drop('ITEM', axis=1)
+    dfDodec = dfDodec.drop('SHEET', axis=1)
+    dfDodec = dfDodec.drop('WIDTH', axis=1)
+    dfDodec = dfDodec.drop('LENGTH', axis=1)
+    dfDodec = dfDodec.drop('QTY', axis=1)
+    dfDodec = dfDodec.drop('ASSY.', axis=1)
+    dfDodec = dfDodec.drop('PART DESCRIPTION', axis=1)
+    dfDodec.rename(columns = {'PLATEWIDTH':'WIDTH'}, inplace=True)
+    dfDodec['LENGTH.1'] = np.ceil(dfDodec['LENGTH.1']) + 5
+    dfDodec.rename(columns = {'LENGTH.1':'LENGTH'}, inplace=True)
+    dfDodec = dfDodec.drop('WIDTH.1', axis=1)
+    dfDodec = dfDodec.drop('STRUCTURES', axis=1)
+    dfDodec.rename(columns = {'TOTAL':'QUANTITY'}, inplace=True)
+    dfDodec.rename(columns = {'MATERIAL DESCRIPTION':'THICKNESS'}, inplace=True)
+    # Extract fraction from string in df['THICKNESS'] column
+    dfDodec['THICKNESS'] = dfDodec['THICKNESS'].apply(lambda x: re.findall(r'\d+/\d+', x)[0] if re.findall(r'\d+/\d+', x) else x)
+    # dfDodec['THICKNESS'] = dfDodec.apply(lambda row:(row.astype(str).split(" ",1)[1].split('"',1)[0]),axis=1)
+    # dfDodec['WEIGHT EACH'] = dfDodec['']
+    # dfDodec = dfDodec['PROJECT', 'QUANTITY', 'PART NUMBER', 'GRADE', 'THICKNESS', 'WIDTH', 'LENGTH']
+    dfDodec.to_excel(output_directory + "//" + projectName + " Dodec Plates.xlsx", sheet_name="Sheet 1")
+    
 
 #filter out everything but clamp plates
 dfClampPl = df[df['PART NUMBER'].str.contains("CPS*", na=False, case=False)].copy(deep=True)
