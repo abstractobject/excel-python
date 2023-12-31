@@ -578,10 +578,10 @@ if not dfSignBracketNest.empty:
     #sorting by what stick the part is nested on
     SignBracketPoseNestDataFrame.sort_values(by=['MATERIAL DESCRIPTION', 'STICK'], inplace=True)
     #adding blank columns so output can be copy-pasted to cut ticket template
-    SignBracketPoseNestDataFrame['STOCK CODE'] = None
-    SignBracketPoseNestDataFrame['RAW MAT QTY'] = None
-    SignBracketPoseNestDataFrame['HEAT NUMBER'] = None
-    SignBracketPoseNestDataFrame['LOCATION'] = None
+    SignBracketPoseNestDataFrame['STOCK CODE'] = "??"
+    SignBracketPoseNestDataFrame['RAW MAT QTY'] = "??"
+    SignBracketPoseNestDataFrame['HEAT NUMBER'] = "??"
+    SignBracketPoseNestDataFrame['LOCATION'] = "??"
     #sorting columns in correct order
     SignBracketPoseNestDataFrame = SignBracketPoseNestDataFrame[['PROJECT', 'PART', 'QTY', 'STOCK CODE', 'GRADE', 'MATERIAL DESCRIPTION', 'RAW MAT QTY', 'HEAT NUMBER', 'LOCATION', 'SHOP NOTES', 'STATION', 'NESTED LENGTH', 'STICK']]
     #save to excel file
@@ -927,7 +927,7 @@ else:
 #####Misc Hardware#####
 
 #filter out everyhing already covered
-dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pipe*|tube*|screw*|bolt*|washer*|nut*|weld*|s-tee*", na=False, case=False)]
+dfRemain = df[~df['PART DESCRIPTION'].str.contains("angle*|flat*|plate*|beam*|pipe*|tube*|screw*|bolt*|washer*|nut*|weld*|s-tee*|s-beam*", na=False, case=False)]
 #if dfRemain is empty, skip this section
 if not dfRemain.empty:
     dfRemain = dfRemain.dropna(subset=['MATERIAL DESCRIPTION'])
