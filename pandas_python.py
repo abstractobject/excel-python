@@ -158,7 +158,7 @@ if not dfAngle.empty:
         return data
 
     # angle nesting function
-    for group, dfAngleType in dfAngle.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):
+    for group, dfAngleType in dfAngle.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):
         data = create_data_model_angle()
 
         # Create the CP-SAT model.
@@ -191,7 +191,7 @@ if not dfAngle.empty:
         model.Minimize(sum(y[j] for j in data['bins']))
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 180.0
+        solver.parameters.max_time_in_seconds = 1800
         status = solver.Solve(model)
 
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
@@ -209,22 +209,14 @@ if not dfAngle.empty:
                     if bin_items:
                         # counting number of sticks pulled
                         num_bins += 1
-                        # estimating material usage
-                        if bin_weight < 360000 and bin_weight > 120000:
-                            bin_usage += round(bin_weight / 480000, 2)
-                        elif bin_weight > 360000:
-                            bin_usage += 1
-                        else:
-                            bin_usage += 0.25
             # make list of parts
-            AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER': num_bins, 'USAGE': bin_usage, 'STRUCTURES': data['structures']}
+            AngleNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER': num_bins, 'STRUCTURES': data['structures']}
             # list to dataframe
             AngleNestDictionaryDataFrame = pd.DataFrame(data=AngleNestDictionary, index=[0])
             # add parts to overall list
             AngleNestWorksetDataFrame.append(AngleNestDictionaryDataFrame)
             dfAngleTypeSum = dfAngleType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
             dfAngleTypeSum['ORDER'] = num_bins
-            dfAngleTypeSum['USAGE'] = bin_usage
             AngleCutTicketWorksetDataFrame.append(dfAngleTypeSum)
         else:
             # there's either a fatal problem, or there's too many "good" solutions
@@ -246,6 +238,7 @@ if not dfAngle.empty:
             #adding blank column so output can be copy-pasted to cut ticket template
             dfAngleCutTicket['INVENTORY ID'] = None
             #re-sorting columns in correct order
+            dfAngleCutTicket['USAGE'] = "??"
             dfAngleCutTicket = dfAngleCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
             #adding to excel file, tab name is "sheet name | station"
             dfAngleCutTicket.to_excel(writerCutTicket, sheet_name=dfAngleCutTicket.iloc[0,1] + " | " + dfAngleCutTicket.iloc[0,10])
@@ -313,7 +306,7 @@ if not dfFlatBar.empty:
         return data
 
     #FlatBar nesting fuction
-    for group, dfFlatBarType in dfFlatBar.groupby(['DRAWING', 'MATERIAL DESCRIPTION', 'STRUCTURES']):    
+    for group, dfFlatBarType in dfFlatBar.groupby(['PROJECT', 'MATERIAL DESCRIPTION']):    
         
         data = create_data_model_FlatBar()
 
@@ -348,7 +341,7 @@ if not dfFlatBar.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 180.0
+        solver.parameters.max_time_in_seconds = 1800
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -368,22 +361,14 @@ if not dfFlatBar.empty:
                     if bin_items:
                         #counting number of sticks pulled
                         num_bins += 1
-                        #estimating material usage
-                        if bin_weight < 180000 and bin_weight > 60000:
-                            bin_usage += round(bin_weight/240000, 2)
-                        elif bin_weight > 180000:
-                            bin_usage += 1
-                        else:
-                            bin_usage += 0.25
             #make list of parts
-            FlatBarNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'USAGE':bin_usage, 'STRUCTURES': data['structures']}
+            FlatBarNestDictionary = {'PROJECT': projectName, 'DRAWING': data['drawing'], 'MATERIAL DESCRIPTION': data['material'], 'ORDER':num_bins, 'STRUCTURES': data['structures']}
             #list to dataframe
             FlatBarNestDictionaryDataFrame = pd.DataFrame(data=FlatBarNestDictionary, index=[0])
             #add parts to overall list
             FlatBarNestWorksetDataFrame.append(FlatBarNestDictionaryDataFrame)
             dfFlatBarTypeSum = dfFlatBarType.groupby(['PROJECT', 'DRAWING', 'ITEM', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'LENGTH', 'STRUCTURES'])['QTY'].sum(numeric_only=True).reset_index()
             dfFlatBarTypeSum['ORDER'] = num_bins
-            dfFlatBarTypeSum['USAGE'] = bin_usage
             FlatBarCutTicketWorksetDataFrame.append(dfFlatBarTypeSum)
         else:
             #there's either a fatal problem, or there's too many "good" solutions
@@ -404,6 +389,7 @@ if not dfFlatBar.empty:
             #adding blank column so output can be copy-pasted to cut ticket template
             dfFlatBarCutTicket['INVENTORY ID'] = None
             #re-sorting columns in correct order
+            dfFlatBarCutTicket['USAGE'] = "??"
             dfFlatBarCutTicket = dfFlatBarCutTicket[['ITEM', 'DRAWING', 'PART NUMBER', 'LENGTH', 'QTY','INVENTORY ID', 'MATERIAL DESCRIPTION', 'USAGE', 'SIZE', 'ORDER', 'STRUCTURES']]
             #adding to excel file, tab name is "sheet name | station"
             dfFlatBarCutTicket.to_excel(writerCutTicket, sheet_name=dfFlatBarCutTicket.iloc[0,1] + " | " + dfFlatBarCutTicket.iloc[0,10])
@@ -534,7 +520,7 @@ if not dfSignBracketNest.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 180.0
+        solver.parameters.max_time_in_seconds = 1800
         status = solver.Solve(model)
 
         # Letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -673,7 +659,7 @@ if not dfSteeNest.empty:
 
         # Create the solver and solve the model.
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 180.0
+        solver.parameters.max_time_in_seconds = 1800
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
@@ -1078,7 +1064,7 @@ if not dfClampPl.empty:
         model.Minimize(sum(y[j] for j in data['bins']))
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 180.0
+        solver.parameters.max_time_in_seconds = 1800
         status = solver.Solve(model)
 
         #letting the solver give us either a perfect solution or if there's multiple good solutions, just giving one of those
