@@ -111,6 +111,7 @@ dfAngle = dfAngle[~dfAngle['PART DESCRIPTION'].str.contains("Flat*", na=False, c
 AnglePoseNestDataFrameSUM = None       
 
 #check if pandas dataframe dfAngle is empty
+writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
 if not dfAngle.empty:
 
     #sort by column MATERIAL DESCRIPTION
@@ -223,7 +224,6 @@ if not dfAngle.empty:
             print('Angle nesting problem does not have an optimal or feasible solution.')
 
             
-    writerCutTicket = pd.ExcelWriter(output_directory + "//" + projectName + " Anglematic Cut Ticket Data.xlsx")
     #saving angle nesting results 
     if AngleCutTicketWorksetDataFrame:
         AngleCutTicketDataFrame = pd.concat(AngleCutTicketWorksetDataFrame, ignore_index=True)
