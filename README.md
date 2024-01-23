@@ -15,7 +15,7 @@ Windows install instructions:
 
 2) Press the start buton and type PATH. CLick "Edit the System Environment Variables", then click "Environment Variables", then under Systme Variables doubleclick PATH. In this new window click Add, and paste:
 
-C:\Users\*******\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts
+C:\Users\\*******\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts
 
 ******* must be replaced with your username.
 
