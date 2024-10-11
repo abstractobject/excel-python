@@ -765,12 +765,7 @@ dfShopBolts2 = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=Fa
 dfShopBolts2 = dfShopBolts2[~dfShopBolts2['DRAWING'].str.contains("CA", na=False, case=False)]
 #if there's no shop bolts, skip this section
 if not dfShopBolts2.empty:
-    #function for sorting bolts by dia
-    dfShopBolts2['DIA'] = np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
-                    np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
-                    np.where(dfShopBolts2['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
-    #get a sum of bolts by type and station
-    dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
+    dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
     #add sheet name to station name column'
     dfShopBolts2['STRUCTURES'] = dfShopBolts2['DRAWING'].astype(str) + ' | ' + dfShopBolts2['STRUCTURES'].astype(str)
     #delete unnecessary columns
@@ -794,19 +789,8 @@ if not dfShopBolts2.empty:
     dfShopBolts2 = dfShopBolts2.drop('QTY', axis=1)
     #adding "use" column so vendor can mark buckets accordingly
     dfShopBolts2['USE'] = "ASSY"
-    #delete unnecessary column
-    dfShopBolts2 = dfShopBolts2.drop('DIA', axis=1)
-    #function for adding blank lines after every station/sheet
-    dfShopBolts3 = pd.DataFrame([[''] * len(dfShopBolts2.columns)], columns=dfShopBolts2.columns)
-    # For each grouping Apply insert headers
-    dfShopBolts4 = (dfShopBolts2.groupby('STRUCTURES', group_keys=False)
-            .apply(lambda d: pd.concat([d, dfShopBolts3]))
-            .iloc[:-2]
-            .reset_index(drop=True))
-    #adding last line back on, not sure why it gets deleted
-    dfShopBolts4 = pd.concat([dfShopBolts4, dfShopBolts2.tail(1)], ignore_index=True)
     #saving to excel file
-    dfShopBolts4.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
+    dfShopBolts2.to_excel(output_directory + "//" + projectName + " Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 else:
     print("No shop bolts found in BOM")
 
@@ -816,10 +800,6 @@ else:
 dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=False, case=False)].copy(deep=True)
 #if there's no col assy bolts, skip this section
 if not dfColAssyBolts.empty:
-    #function for sorting bolts by dia
-    dfColAssyBolts['DIA'] = np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
-                    np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
-                    np.where(dfColAssyBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
     #get a sum of bolts by type and station
     dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
     #add sheet name to station name column'
@@ -845,18 +825,8 @@ if not dfColAssyBolts.empty:
     dfColAssyBolts = dfColAssyBolts.drop('QTY', axis=1)
     #adding "use" column so vendor can mark buckets accordingly
     dfColAssyBolts['USE'] = "COLUMN ASSY"
-    #delete unnecessary column
-    dfColAssyBolts = dfColAssyBolts.drop('DIA', axis=1)
-    #function for adding blank lines after every sheet/station
-    dfColAssyBolts2 = pd.DataFrame([[''] * len(dfColAssyBolts.columns)], columns=dfColAssyBolts.columns)
-    dfColAssyBolts3 = (dfColAssyBolts.groupby('STRUCTURES', group_keys=False)
-            .apply(lambda d: pd.concat([d, dfColAssyBolts2]))
-            .iloc[:-2]
-            .reset_index(drop=True))
-    #adding last line back on, not sure why it gets deleted
-    dfColAssyBolts3 = pd.concat([dfColAssyBolts3, dfColAssyBolts.tail(1)], ignore_index=True)
     #saving to excel file
-    dfColAssyBolts3.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
+    dfColAssyBolts.to_excel(output_directory + "//" + projectName + " Col Assy Hardware Order.xlsx", sheet_name="Sheet 1")
 else:
     print("No column assembly bolts found in BOM")
 
@@ -867,12 +837,7 @@ dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=Fal
 #if there's no field bolts, skip this section
 if not dfFieldBolts.empty:
     #get a sum of bolts by type and station
-    dfFieldBolts['DIA'] = "OTHER"
-    #function for sorting bolts by dia
-    dfFieldBolts['DIA'] = np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('1/2"ø'), 0.5,
-                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('5/8"ø'), 0.625,
-                    np.where(dfFieldBolts['MATERIAL DESCRIPTION'].str.contains('3/4"ø'), .75, "OTHER")))
-    dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'DIA', 'PART DESCRIPTION'], inplace=True)
+    dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
     #delete unnecessary columns
     dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
     dfFieldBolts = dfFieldBolts.drop('MAIN NUMBER', axis=1)
@@ -891,21 +856,10 @@ if not dfFieldBolts.empty:
     dfFieldBolts = dfFieldBolts.drop('QTY', axis=1)
     #adding "use" column so vendor can mark buckets accordingly
     dfFieldBolts['USE'] = "SHIP LOOSE"
-    #delete unnecessary column
-    dfFieldBolts = dfFieldBolts.drop('DIA', axis=1)
-    #function for adding a blank line after every sheet/station
-    dfFieldBolts2 = pd.DataFrame([[''] * len(dfFieldBolts.columns)], columns=dfFieldBolts.columns)
-    # For each grouping Apply insert headers
-    dfFieldBolts3 = (dfFieldBolts.groupby('STRUCTURES', group_keys=False)
-            .apply(lambda d: pd.concat([d,dfFieldBolts2]))
-            .iloc[:-2]
-            .reset_index(drop=True))
-    #adding last line back on, not sure why it gets deleted
-    dfFieldBolts3 = pd.concat([dfFieldBolts3, dfFieldBolts.tail(1)], ignore_index=True)
-    dfFieldBolts3['STRUCTURES'] = dfFieldBolts3['DRAWING'].astype(str) + ' | ' + dfFieldBolts3['STRUCTURES'].astype(str)
-    dfFieldBolts3 = dfFieldBolts3.drop('DRAWING', axis=1)
+    dfFieldBolts['STRUCTURES'] = dfFieldBolts['DRAWING'].astype(str) + ' | ' + dfFieldBolts['STRUCTURES'].astype(str)
+    dfFieldBolts = dfFieldBolts.drop('DRAWING', axis=1)
     #saving to excel file
-    dfFieldBolts3.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
+    dfFieldBolts.to_excel(output_directory + "//" + projectName + " Ship Loose Hardware Order.xlsx", sheet_name="Sheet 1")
 else:
     print("No field bolts found in BOM")
 
@@ -1226,7 +1180,7 @@ if dfShipTicketWorkset:
             dfFieldBoltStation.rename(columns = {'ORDER':'QTY'}, inplace=True)
             dfFieldBoltStation = dfFieldBoltStation.drop('USE', axis=1)
            
-            if dfFieldBoltStation.iloc[0,4] in dfStationBOL.iloc[0,6]:
+            if dfFieldBoltStation.iloc[0,4].astype(str) in dfStationBOL.iloc[0,6]:
                 dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
         dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
         dfStationBOL = dfStationBOL[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
