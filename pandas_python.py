@@ -1179,8 +1179,7 @@ if dfShipTicketWorkset:
         for group, dfFieldBoltStation in dfFieldBolts.groupby(['PROJECT', 'STRUCTURES']):
             dfFieldBoltStation.rename(columns = {'ORDER':'QTY'}, inplace=True)
             dfFieldBoltStation = dfFieldBoltStation.drop('USE', axis=1)
-           
-            if dfFieldBoltStation.iloc[0,4].astype(str) in dfStationBOL.iloc[0,6]:
+            if dfStationBOL.iloc[0,6] in dfFieldBoltStation.iloc[0,3]:
                 dfStationBOL = pd.concat([dfStationBOL, dfFieldBoltStation], ignore_index=True)
         dfStationBOL.loc[(dfStationBOL['MATERIAL DESCRIPTION'].str.contains("BOLT*", na=False)), 'MATERIAL DESCRIPTION'] = dfStationBOL['MATERIAL DESCRIPTION'].astype(str) + " " + dfStationBOL['GRADE'].astype(str)
         dfStationBOL = dfStationBOL[['PROJECT', 'MAIN NUMBER', 'QTY', 'PART NUMBER', 'MATERIAL DESCRIPTION', 'WEIGHT', 'STRUCTURES']]
