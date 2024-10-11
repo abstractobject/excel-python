@@ -765,7 +765,7 @@ dfShopBolts2 = dfNutsAndBolts[~dfNutsAndBolts['DRAWING'].str.contains("E", na=Fa
 dfShopBolts2 = dfShopBolts2[~dfShopBolts2['DRAWING'].str.contains("CA", na=False, case=False)]
 #if there's no shop bolts, skip this section
 if not dfShopBolts2.empty:
-    dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+    dfShopBolts2.sort_values(by=['DRAWING', 'STRUCTURES'], inplace=True)
     #add sheet name to station name column'
     dfShopBolts2['STRUCTURES'] = dfShopBolts2['DRAWING'].astype(str) + ' | ' + dfShopBolts2['STRUCTURES'].astype(str)
     #delete unnecessary columns
@@ -801,7 +801,7 @@ dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=
 #if there's no col assy bolts, skip this section
 if not dfColAssyBolts.empty:
     #get a sum of bolts by type and station
-    dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA', 'PART DESCRIPTION'], inplace=True)
+    dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA'], inplace=True)
     #add sheet name to station name column'
     dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'].astype(str) + ' | ' + dfColAssyBolts['STRUCTURES'].astype(str)
     #delete unnecessary columns
@@ -837,7 +837,7 @@ dfFieldBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("E", na=Fal
 #if there's no field bolts, skip this section
 if not dfFieldBolts.empty:
     #get a sum of bolts by type and station
-    dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES', 'PART DESCRIPTION'], inplace=True)
+    dfFieldBolts.sort_values(by=['DRAWING', 'STRUCTURES'], inplace=True)
     #delete unnecessary columns
     dfFieldBolts = dfFieldBolts.drop('SHEET', axis=1)
     dfFieldBolts = dfFieldBolts.drop('MAIN NUMBER', axis=1)
