@@ -801,7 +801,7 @@ dfColAssyBolts = dfNutsAndBolts[dfNutsAndBolts['DRAWING'].str.contains("CA", na=
 #if there's no col assy bolts, skip this section
 if not dfColAssyBolts.empty:
     #get a sum of bolts by type and station
-    dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES','DIA'], inplace=True)
+    dfColAssyBolts.sort_values(by=['DRAWING', 'STRUCTURES'], inplace=True)
     #add sheet name to station name column'
     dfColAssyBolts['STRUCTURES'] = dfColAssyBolts['DRAWING'].astype(str) + ' | ' + dfColAssyBolts['STRUCTURES'].astype(str)
     #delete unnecessary columns
