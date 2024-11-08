@@ -16,13 +16,14 @@ root = tk.Tk()
 root.withdraw()
 
 gui = Tk()
-gui.geometry("400x150")
+gui.geometry("400x200")
 gui.title("SS Mat Order")
 gui.columnconfigure(0, weight=3)
 gui.columnconfigure(1, weight=1)
 
 folderPath = StringVar()
 filePath = StringVar()
+databasePath = StringVar()
 
 class FolderSelect(Frame):
     def __init__(self,parent=None,folderDescription="",**kw):
@@ -61,29 +62,51 @@ class FileSelect(Frame):
     def file_path(self):
         self.entPath.update()
         return self.filePath.get()
-        
+
+class dbFileSelect(Frame):
+    def __init__(self,parent=None,folderDescription="",**kw):
+        Frame.__init__(self,master=parent,**kw)
+        self.filePath = StringVar()
+        self.lblName = Label(self, text=folderDescription)
+        self.lblName.grid(row=0,column=0, sticky="ew", pady=1)
+        self.entPath = Entry(self, textvariable=self.filePath)
+        self.entPath.grid(row=1,column=0, sticky="ew", pady=1)
+        self.btnFind = ttk.Button(self, text="Select File",command=self.setFilePath)
+        self.btnFind.grid(row=1,column=1, pady=1)
+    def setFilePath(self):
+        file_selected = filedialog.askopenfilename()
+        self.filePath.set(file_selected)
+        self.entPath.insert(0,file_selected)
+    @property
+    def file_path(self):
+        self.entPath.update()
+        return self.filePath.get()       
 
 def doStuff():
     global excel_file
     global output_directory
+    global shape_database
     excel_file = file1Select.file_path
+    shape_database = fileDBSelect.file_path
     output_directory = directory1Select.folder_path
     root.quit()
 
 def endProgram():
     sys.exit()
 
+fileDBSelect = dbFileSelect(gui,"Shapes Database:")
+fileDBSelect.grid(row=0)
 
 file1Select = FileSelect(gui,"Excel BOM File:")
-file1Select.grid(row=0)
+file1Select.grid(row=1)
 
 directory1Select = FolderSelect(gui,"Order Files Output Folder:")
-directory1Select.grid(row=1)
+directory1Select.grid(row=2)
 
 c = ttk.Button(gui, text="RUN", command=doStuff)
-c.grid(row=4,column=0, pady=1)
+c.grid(row=5,column=0, pady=1)
 e = ttk.Button(gui, text="EXIT", command=endProgram)
-e.grid(row=4,column=1, pady=1)
+e.grid(row=5,column=1, pady=1)
 gui.mainloop()
 
 if excel_file[len(excel_file)-1] == "s":
@@ -96,6 +119,19 @@ df = pd.read_excel(excel_file, sheet_name=0, header=[1], skiprows=[2], dtype_bac
 
 #rename column "ITEM.1" to "QTY"
 df.rename(columns = {'ITEM.1':'QTY'}, inplace=True)
+
+#calculate weights for linear material
+dfShapeDatabase = pd.read_excel(shape_database, header=[0], usecols=['AISC_Manual_Label', 'W'], dtype_backend="pyarrow")
+dfShapeDatabase.rename(columns = {'AISC_Manual_Label':'MATERIAL'}, inplace=True)
+dfShapeDatabase['MATERIAL'] = dfShapeDatabase['MATERIAL'].str.replace('-','')
+dfShapeDatabase['MATERIAL'] = dfShapeDatabase['MATERIAL'].str.replace('X','x')
+dfWeight = df.copy(deep=True)
+dfWeight['MATERIAL DESCRIPTION'] = dfWeight['MATERIAL DESCRIPTION'].str.replace('"','')
+dfWeight['MATERIAL DESCRIPTION'] = dfWeight['MATERIAL DESCRIPTION'].str.replace(' ','')
+dfWeight['AISC WEIGHT'] = dfWeight['MATERIAL DESCRIPTION'].map(dfShapeDatabase.set_index('MATERIAL')['W'])
+df['AISC WEIGHT'] = dfWeight['AISC WEIGHT']
+df['WEIGHT'] = df.apply(lambda row:(row['AISC WEIGHT'] * row['LENGTH.1']/12 * row['QTY']) if not pd.isna(row['AISC WEIGHT']) else row['WEIGHT'],axis=1)
+df = df.drop('AISC WEIGHT', axis=1)
 
 #get project name
 projectName = df.loc[2]['PROJECT']
